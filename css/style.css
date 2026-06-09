@@ -543,6 +543,7 @@ body:not(.aos-init) [data-aos] {
 .hero h1 {
   margin-bottom: 20px;
   text-shadow: 2px 2px 10px rgba(140, 90, 53, 0.1);
+    height: 1.4em;
 }
 
 .hero p {

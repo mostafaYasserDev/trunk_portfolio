@@ -32,6 +32,7 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  height: 1.4em;
 }
 
 .hero p {
