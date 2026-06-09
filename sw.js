@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jidhe-v8';
+const CACHE_NAME = 'jidhe-v9';
 const ASSETS = [
     './',
     './index.html',
@@ -13,6 +13,7 @@ const ASSETS = [
     './js/ui.js',
     './firebase/public.js',
     './assets/logo.png',
+    './manifest.json',
     './vendor/quill/quill.min.js',
     './vendor/quill/quill.snow.css',
     './otf/thmanyahseriftext-Regular.otf',
@@ -42,6 +43,7 @@ self.addEventListener('fetch', (e) => {
         return;
     }
     if (url.origin.includes('googleapis.com') || url.origin.includes('gstatic.com') ||
+        url.origin.includes('google-analytics.com') || url.origin.includes('googletagmanager.com') ||
         url.origin.includes('unpkg.com') || url.origin.includes('cdnjs.cloudflare.com')) {
         return;
     }

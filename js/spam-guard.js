@@ -1,6 +1,10 @@
 /**
  * حماية بسيطة من السبام للنماذج العامة (بدون خادم خلفي).
  */
+import { sanitizePlainText, isValidEmail, validatePublicPayload } from './security.js';
+
+export { sanitizePlainText as sanitizeText, isValidEmail };
+
 const DEFAULT_OPTS = {
     minMs: 3500,
     cooldownMs: 90000,
@@ -101,7 +105,3 @@ export function createSpamGuard(formKey, options = {}) {
 
     return { attachToForm, validate, recordSubmit };
 }
-
-import { escapeHtml, sanitizePlainText, isValidEmail, validatePublicPayload } from './security.js';
-
-export { sanitizePlainText as sanitizeText, isValidEmail };

@@ -4,6 +4,7 @@ import {
     escapeHtml, updatePageMeta, PAGE_META, initReadingProgress, removeReadingProgress, buildAboutHtml
 } from './helpers.js';
 import { bindSocialModals } from './social-modal.js';
+import { createSpamGuard, sanitizeText, isValidEmail } from './spam-guard.js';
 
 const appRoot = document.getElementById('app-root');
 const REVIEWS_LIMIT = 8;
