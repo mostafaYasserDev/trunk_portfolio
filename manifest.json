@@ -1,0 +1,19 @@
+{
+  "name": "جذع - حكاية تنمو",
+  "short_name": "جذع",
+  "description": "بورتفوليو شخصي - أروي حكايات برمجية بروح فنية",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FAEDCD",
+  "theme_color": "#8C5A35",
+  "icons": [
+    {
+      "src": "assets/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

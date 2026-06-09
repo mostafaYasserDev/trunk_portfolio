@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>إدارة المشاريع - جذع</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="text-align: center; margin-bottom: 10px;"><img src="../assets/logo.png" alt="جذع" style="width: 50px;"></div>
+        <h2>إدارة جذع</h2>
+        <a href="dashboard.html">لوحة التحكم</a>
+        <a href="articles.html">المقالات</a>
+        <a href="projects.html" class="active">المشاريع</a>
+        <a href="services.html">الخدمات</a>
+        <a href="reviews.html">آراء العملاء</a>
+        <a href="messages.html">صندوق الوارد</a>
+        <a href="settings.html">الإعدادات</a>
+        <button id="logout-btn">تسجيل الخروج</button>
+    </aside>
+
+    <main class="main-content">
+        <h1>إدارة المشاريع</h1>
+
+        <div class="card">
+            <h3 id="form-title">إضافة مشروع جديد</h3>
+            <form id="project-form">
+                <input type="hidden" id="project-id">
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="proj-title">عنوان المشروع</label>
+                        <input type="text" id="proj-title" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="proj-tech">التقنيات (مفصولة بفاصلة)</label>
+                        <input type="text" id="proj-tech" class="form-control" placeholder="HTML, CSS, JS...">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="proj-short">وصف قصير (يظهر في الكروت)</label>
+                    <input type="text" id="proj-short" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="proj-full">الوصف الكامل</label>
+                    <textarea id="proj-full" class="form-control" rows="5" required></textarea>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="proj-demo">رابط المعاينة</label>
+                        <input type="url" id="proj-demo" class="form-control" dir="ltr" placeholder="https://">
+                    </div>
+                    <div class="form-group">
+                        <label for="proj-github">رابط جيتهب</label>
+                        <input type="url" id="proj-github" class="form-control" dir="ltr" placeholder="https://github.com/...">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="proj-image">الصورة الرئيسية</label>
+                    <input type="file" id="proj-image" class="form-control" accept="image/*">
+                    <div id="upload-progress"></div>
+                </div>
+
+                <div class="form-group">
+                    <label><input type="checkbox" id="proj-featured"> مشروع مميز (يظهر في الرئيسية)</label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn" id="submit-btn">حفظ المشروع</button>
+                    <button type="button" class="btn btn-danger" id="cancel-btn" style="display: none;">إلغاء التعديل</button>
+                </div>
+                <div id="form-msg"></div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>قائمة المشاريع</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>صورة</th>
+                            <th>المشروع</th>
+                            <th>مميز</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projects-list">
+                        <tr><td colspan="4" style="text-align: center;">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/admin.js"></script>
+    <script type="module">
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
+
+        onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login.html'; });
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        const form = document.getElementById('project-form');
+        const idInput = document.getElementById('project-id');
+        const titleInput = document.getElementById('proj-title');
+        const techInput = document.getElementById('proj-tech');
+        const shortInput = document.getElementById('proj-short');
+        const fullInput = document.getElementById('proj-full');
+        const demoInput = document.getElementById('proj-demo');
+        const githubInput = document.getElementById('proj-github');
+        const featuredInput = document.getElementById('proj-featured');
+        const imageInput = document.getElementById('proj-image');
+        const progressDiv = document.getElementById('upload-progress');
+        const msgDiv = document.getElementById('form-msg');
+        const submitBtn = document.getElementById('submit-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const formTitle = document.getElementById('form-title');
+        let currentEditingImageUrl = '';
+
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        let width = img.width, height = img.height;
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
+                        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.onerror = reject;
+                };
+                reader.onerror = reject;
+            });
+        }
+
+        onSnapshot(collection(db, 'projects'), (snapshot) => {
+            const list = document.getElementById('projects-list');
+            if (snapshot.empty) {
+                list.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد مشاريع بعد.</td></tr>';
+                return;
+            }
+            list.innerHTML = '';
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const id = docSnap.id;
+                const safeData = encodeURIComponent(JSON.stringify({
+                    id, title: data.title, technologies: data.technologies,
+                    shortDescription: data.shortDescription, fullDescription: data.fullDescription,
+                    demoLink: data.demoLink, githubLink: data.githubLink, featured: data.featured
+                }));
+                list.innerHTML += `
+                    <tr>
+                        <td>${data.mainImage ? `<img src="${data.mainImage}" class="table-img" alt="">` : '—'}</td>
+                        <td><strong>${data.title}</strong><br><span style="font-size:0.85rem;color:var(--admin-text-muted);">${data.technologies || ''}</span></td>
+                        <td>${data.featured ? '✅' : '—'}</td>
+                        <td><div class="table-actions">
+                            <button class="btn btn-sm" onclick="editProject('${safeData}', '${id}')">تعديل</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteProject('${id}')">حذف</button>
+                        </div></td>
+                    </tr>`;
+                if (!window.projectImages) window.projectImages = {};
+                window.projectImages[id] = data.mainImage || '';
+            });
+        });
+
+        window.editProject = (safeData, id) => {
+            const data = JSON.parse(decodeURIComponent(safeData));
+            idInput.value = data.id;
+            titleInput.value = data.title;
+            techInput.value = data.technologies || '';
+            shortInput.value = data.shortDescription || '';
+            fullInput.value = data.fullDescription || '';
+            demoInput.value = data.demoLink || '';
+            githubInput.value = data.githubLink || '';
+            featuredInput.checked = data.featured || false;
+            currentEditingImageUrl = window.projectImages[id] || '';
+            formTitle.textContent = 'تعديل المشروع';
+            submitBtn.textContent = 'تحديث المشروع';
+            cancelBtn.style.display = 'inline-flex';
+            document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        cancelBtn.addEventListener('click', () => {
+            form.reset(); idInput.value = ''; currentEditingImageUrl = '';
+            formTitle.textContent = 'إضافة مشروع جديد';
+            submitBtn.textContent = 'حفظ المشروع';
+            cancelBtn.style.display = 'none';
+        });
+
+        window.deleteProject = async (id) => {
+            if (confirm('هل أنت متأكد من حذف هذا المشروع؟')) await deleteDoc(doc(db, 'projects', id));
+        };
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            msgDiv.textContent = 'جاري الحفظ...';
+            msgDiv.className = '';
+            try {
+                let mainImage = currentEditingImageUrl;
+                if (imageInput.files.length > 0) {
+                    progressDiv.textContent = 'جاري معالجة الصورة...';
+                    mainImage = await compressImage(imageInput.files[0]);
+                    progressDiv.textContent = '';
+                }
+                const projectData = {
+                    title: titleInput.value, technologies: techInput.value,
+                    shortDescription: shortInput.value, fullDescription: fullInput.value,
+                    demoLink: demoInput.value, githubLink: githubInput.value,
+                    featured: featuredInput.checked, mainImage
+                };
+                if (idInput.value) {
+                    await updateDoc(doc(db, 'projects', idInput.value), projectData);
+                    msgDiv.textContent = 'تم تحديث المشروع بنجاح!';
+                } else {
+                    await addDoc(collection(db, 'projects'), projectData);
+                    msgDiv.textContent = 'تمت إضافة المشروع بنجاح!';
+                }
+                msgDiv.className = 'msg-success';
+                cancelBtn.click();
+                setTimeout(() => msgDiv.textContent = '', 3000);
+            } catch (error) {
+                msgDiv.textContent = 'حدث خطأ. تأكد أن حجم الصورة ليس ضخماً.';
+                msgDiv.className = 'msg-error';
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

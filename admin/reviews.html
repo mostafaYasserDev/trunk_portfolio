@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>إدارة آراء العملاء - جذع</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="text-align: center; margin-bottom: 10px;"><img src="../assets/logo.png" alt="جذع" style="width: 50px;"></div>
+        <h2>إدارة جذع</h2>
+        <a href="dashboard.html">لوحة التحكم</a>
+        <a href="articles.html">المقالات</a>
+        <a href="projects.html">المشاريع</a>
+        <a href="services.html">الخدمات</a>
+        <a href="reviews.html" class="active">آراء العملاء</a>
+        <a href="messages.html">صندوق الوارد</a>
+        <a href="settings.html">الإعدادات</a>
+        <button id="logout-btn">تسجيل الخروج</button>
+    </aside>
+
+    <main class="main-content">
+        <h1>إدارة آراء العملاء</h1>
+
+        <div class="card">
+            <h3>مشاركة رابط كتابة الرأي</h3>
+            <p>أرسل هذا الرابط لعملائك — لا يحتاجون حساباً أو كلمة مرور:</p>
+            <div class="share-link" id="review-link"></div>
+        </div>
+
+        <div class="card">
+            <h3>الآراء المكتوبة</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>العميل</th>
+                            <th>الخدمة</th>
+                            <th>الرأي</th>
+                            <th>إظهار؟</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reviews-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/admin.js"></script>
+    <script type="module">
+        import { auth, onAuthStateChanged, signOut, db, collection, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
+
+        onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login.html'; });
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        const base = window.location.origin + window.location.pathname.replace(/admin\/reviews\.html$/, '');
+        document.getElementById('review-link').textContent = base + 'client/write-review.html';
+
+        onSnapshot(collection(db, 'reviews'), (snapshot) => {
+            const list = document.getElementById('reviews-list');
+            if (snapshot.empty) {
+                list.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا توجد آراء بعد.</td></tr>';
+                return;
+            }
+            list.innerHTML = '';
+            snapshot.forEach((documentSnap) => {
+                const data = documentSnap.data();
+                list.innerHTML += `
+                    <tr>
+                        <td><strong>${data.clientName || '—'}</strong></td>
+                        <td>${data.serviceName ? `<span class="service-tag">${data.serviceName}</span>` : '—'}</td>
+                        <td><p style="font-size:0.9rem;margin:0;color:var(--admin-text-muted);max-width:280px;">${data.reviewText}</p></td>
+                        <td>
+                            <label class="switch">
+                                <input type="checkbox" onchange="toggleVisibility('${documentSnap.id}', this.checked)" ${data.visible ? 'checked' : ''}>
+                                <span class="slider-toggle"></span>
+                            </label>
+                        </td>
+                        <td><div class="table-actions"><button class="btn btn-danger btn-sm" onclick="deleteReview('${documentSnap.id}')">حذف</button></div></td>
+                    </tr>`;
+            });
+        });
+
+        window.toggleVisibility = async (id, isVisible) => {
+            await updateDoc(doc(db, 'reviews', id), { visible: isVisible });
+        };
+
+        window.deleteReview = async (id) => {
+            if (confirm('هل أنت متأكد من حذف هذا الرأي؟')) await deleteDoc(doc(db, 'reviews', id));
+        };
+    </script>
+</body>
+</html>

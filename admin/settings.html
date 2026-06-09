@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>الإعدادات - جذع</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="text-align: center; margin-bottom: 10px;"><img src="../assets/logo.png" alt="جذع" style="width: 50px;"></div>
+        <h2>إدارة جذع</h2>
+        <a href="dashboard.html">لوحة التحكم</a>
+        <a href="articles.html">المقالات</a>
+        <a href="projects.html">المشاريع</a>
+        <a href="services.html">الخدمات</a>
+        <a href="reviews.html">آراء العملاء</a>
+        <a href="messages.html">صندوق الوارد</a>
+        <a href="settings.html" class="active">الإعدادات</a>
+        <button id="logout-btn">تسجيل الخروج</button>
+    </aside>
+
+    <main class="main-content">
+        <h1>إعدادات الموقع والحساب</h1>
+
+        <div class="settings-grid">
+            <div class="card">
+                <h3>تغيير البريد الإلكتروني أو كلمة المرور</h3>
+                <form id="email-form" style="margin-bottom: 20px; border-bottom: 1px solid var(--admin-border); padding-bottom: 20px;">
+                    <div class="form-group">
+                        <label>البريد الإلكتروني الجديد</label>
+                        <input type="email" id="new-email" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn">تحديث البريد</button>
+                    <div id="email-msg" class="msg"></div>
+                </form>
+                <form id="password-form">
+                    <div class="form-group">
+                        <label>كلمة المرور الجديدة</label>
+                        <input type="password" id="new-password" class="form-control" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn">تحديث كلمة المرور</button>
+                    <div id="password-msg" class="msg"></div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>معلومات التواصل (تظهر في الفوتر وقسم التواصل)</h3>
+                <form id="contact-form">
+                    <div class="form-group">
+                        <label>البريد الإلكتروني للتواصل</label>
+                        <input type="email" id="contact-email" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الهاتف</label>
+                        <input type="text" id="contact-phone" class="form-control" dir="ltr" style="text-align: left;">
+                    </div>
+                    <div class="form-group">
+                        <label>معرف التليجرام (بدون @)</label>
+                        <input type="text" id="contact-telegram" class="form-control" dir="ltr" style="text-align: left;">
+                    </div>
+                    <div class="form-group">
+                        <label>رابط لينكدإن</label>
+                        <input type="url" id="contact-linkedin" class="form-control" dir="ltr" style="text-align: left;">
+                    </div>
+                    <div class="form-group">
+                        <label>رابط جيتهب</label>
+                        <input type="url" id="contact-github" class="form-control" dir="ltr" style="text-align: left;">
+                    </div>
+                    <button type="submit" class="btn">حفظ معلومات التواصل</button>
+                    <div id="contact-msg" class="msg"></div>
+                </form>
+            </div>
+
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>إعدادات الصفحة الرئيسية</h3>
+                <form id="general-form">
+                    <div class="general-grid">
+                        <div>
+                            <div class="form-group">
+                                <label>السيرة الذاتية (PDF)</label>
+                                <input type="file" id="cv-file" class="form-control" accept=".pdf,application/pdf">
+                                <p class="hint">الحد الأقصى: 800 كيلوبايت</p>
+                                <div id="cv-status" class="cv-status">لم يتم رفع ملف بعد.</div>
+                            </div>
+                            <button type="button" id="remove-cv-btn" class="btn btn-danger btn-sm" style="display:none; margin-top: 5px;">حذف السيرة الذاتية</button>
+                        </div>
+                        <div>
+                            <div class="form-group">
+                                <label>صورة «من أنا؟»</label>
+                                <input type="file" id="about-image" class="form-control" accept="image/*">
+                                <img id="about-preview" class="preview-img" style="display:none;" alt="معاينة">
+                            </div>
+                            <button type="button" id="remove-about-btn" class="btn btn-danger btn-sm" style="display:none; margin-top: 5px;">حذف الصورة</button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn" style="margin-top: 15px;">حفظ إعدادات الصفحة الرئيسية</button>
+                    <div id="general-msg" class="msg"></div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/admin.js"></script>
+    <script type="module">
+        import { auth, onAuthStateChanged, signOut, updateEmail, updatePassword, db, doc, getDoc, setDoc } from '../firebase/firebase.js';
+
+        const MAX_CV_SIZE = 800 * 1024;
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = 'login.html';
+            else document.getElementById('new-email').value = user.email;
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        document.getElementById('email-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('email-msg');
+            try {
+                await updateEmail(auth.currentUser, document.getElementById('new-email').value);
+                msg.textContent = 'تم تحديث البريد الإلكتروني بنجاح.';
+                msg.className = 'msg success';
+            } catch (error) {
+                msg.textContent = 'حدث خطأ. قد تحتاج لتسجيل الدخول مجدداً.';
+                msg.className = 'msg error';
+            }
+        });
+
+        document.getElementById('password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('password-msg');
+            try {
+                await updatePassword(auth.currentUser, document.getElementById('new-password').value);
+                msg.textContent = 'تم تحديث كلمة المرور بنجاح.';
+                msg.className = 'msg success';
+                document.getElementById('password-form').reset();
+            } catch (error) {
+                msg.textContent = 'حدث خطأ. قد تحتاج لتسجيل الدخول مجدداً.';
+                msg.className = 'msg error';
+            }
+        });
+
+        const contactRef = doc(db, 'settings', 'contact');
+        async function loadContactSettings() {
+            const snap = await getDoc(contactRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                document.getElementById('contact-email').value = data.email || '';
+                document.getElementById('contact-phone').value = data.phone || '';
+                document.getElementById('contact-telegram').value = data.telegram || '';
+                document.getElementById('contact-linkedin').value = data.linkedin || '';
+                document.getElementById('contact-github').value = data.github || '';
+            }
+        }
+        loadContactSettings();
+
+        document.getElementById('contact-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('contact-msg');
+            try {
+                await setDoc(contactRef, {
+                    email: document.getElementById('contact-email').value,
+                    phone: document.getElementById('contact-phone').value,
+                    telegram: document.getElementById('contact-telegram').value,
+                    linkedin: document.getElementById('contact-linkedin').value,
+                    github: document.getElementById('contact-github').value,
+                });
+                msg.textContent = 'تم حفظ معلومات التواصل.';
+                msg.className = 'msg success';
+            } catch (error) {
+                msg.textContent = 'حدث خطأ أثناء الحفظ.';
+                msg.className = 'msg error';
+            }
+        });
+
+        const generalRef = doc(db, 'settings', 'general');
+        let currentCvData = '';
+        let currentAboutImage = '';
+        let removeCv = false;
+        let removeAbout = false;
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 600;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.75));
+                    };
+                    img.onerror = reject;
+                };
+                reader.onerror = reject;
+            });
+        }
+
+        async function loadGeneralSettings() {
+            const snap = await getDoc(generalRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                currentCvData = data.cvData || '';
+                currentAboutImage = data.aboutImage || '';
+
+                if (currentCvData) {
+                    document.getElementById('cv-status').textContent = '✅ تم رفع السيرة الذاتية.';
+                    document.getElementById('remove-cv-btn').style.display = 'inline-block';
+                }
+                if (currentAboutImage) {
+                    const preview = document.getElementById('about-preview');
+                    preview.src = currentAboutImage;
+                    preview.style.display = 'block';
+                    document.getElementById('remove-about-btn').style.display = 'inline-block';
+                }
+            }
+        }
+        loadGeneralSettings();
+
+        document.getElementById('remove-cv-btn').addEventListener('click', () => {
+            removeCv = true;
+            currentCvData = '';
+            document.getElementById('cv-status').textContent = 'سيتم حذف السيرة الذاتية عند الحفظ.';
+            document.getElementById('remove-cv-btn').style.display = 'none';
+        });
+
+        document.getElementById('remove-about-btn').addEventListener('click', () => {
+            removeAbout = true;
+            currentAboutImage = '';
+            document.getElementById('about-preview').style.display = 'none';
+            document.getElementById('remove-about-btn').style.display = 'none';
+        });
+
+        document.getElementById('general-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('general-msg');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            msg.textContent = 'جاري الحفظ...';
+            msg.className = 'msg';
+
+            try {
+                let cvData = currentCvData;
+                let aboutImage = currentAboutImage;
+
+                if (removeCv) {
+                    cvData = '';
+                    removeCv = false;
+                }
+
+                const cvFile = document.getElementById('cv-file').files[0];
+                if (cvFile) {
+                    if (cvFile.size > MAX_CV_SIZE) {
+                        throw new Error('حجم ملف السيرة الذاتية يتجاوز 800 كيلوبايت. استخدم ملفاً أصغر.');
+                    }
+                    msg.textContent = 'جاري معالجة السيرة الذاتية...';
+                    cvData = await readFileAsDataURL(cvFile);
+                }
+
+                if (removeAbout) {
+                    aboutImage = '';
+                    removeAbout = false;
+                }
+
+                const aboutFile = document.getElementById('about-image').files[0];
+                if (aboutFile) {
+                    msg.textContent = 'جاري معالجة الصورة...';
+                    aboutImage = await compressImage(aboutFile);
+                }
+
+                await setDoc(generalRef, {
+                    cvData,
+                    aboutImage,
+                    cvUrl: null
+                }, { merge: true });
+
+                currentCvData = cvData;
+                currentAboutImage = aboutImage;
+
+                if (cvData) {
+                    document.getElementById('cv-status').textContent = '✅ تم رفع السيرة الذاتية.';
+                    document.getElementById('remove-cv-btn').style.display = 'inline-block';
+                } else {
+                    document.getElementById('cv-status').textContent = 'لم يتم رفع ملف بعد.';
+                    document.getElementById('remove-cv-btn').style.display = 'none';
+                }
+
+                if (aboutImage) {
+                    const preview = document.getElementById('about-preview');
+                    preview.src = aboutImage;
+                    preview.style.display = 'block';
+                    document.getElementById('remove-about-btn').style.display = 'inline-block';
+                }
+
+                document.getElementById('cv-file').value = '';
+                document.getElementById('about-image').value = '';
+                msg.textContent = 'تم حفظ إعدادات الصفحة الرئيسية بنجاح.';
+                msg.className = 'msg success';
+            } catch (error) {
+                console.error(error);
+                msg.textContent = error.message || 'حدث خطأ أثناء الحفظ.';
+                msg.className = 'msg error';
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

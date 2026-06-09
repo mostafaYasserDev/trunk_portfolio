@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>جذع - تسجيل الدخول للإدارة</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body class="admin-login-page">
+
+    <div class="admin-login-box">
+        <img src="../assets/logo.png" alt="جذع" style="width: 60px; margin-bottom: 10px;">
+        <h2>تسجيل الدخول</h2>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">البريد الإلكتروني</label>
+                <input type="email" id="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password">كلمة المرور</label>
+                <div class="input-with-icon">
+                    <input type="password" id="password" class="form-control" required>
+                    <button type="button" class="toggle-password" id="toggle-pwd" title="إظهار/إخفاء">👁</button>
+                </div>
+            </div>
+            <button type="submit" class="btn" style="width: 100%;">دخول</button>
+            <div id="error-message" class="error-msg"></div>
+            <a id="forgot-password" class="forgot-link">نسيت كلمة المرور؟</a>
+        </form>
+    </div>
+
+    <script type="module">
+        import { auth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from '../firebase/firebase.js';
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) window.location.href = 'dashboard.html';
+        });
+
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const emailInput = document.getElementById('email');
+        const pwdInput = document.getElementById('password');
+        const togglePwd = document.getElementById('toggle-pwd');
+
+        togglePwd.addEventListener('click', () => {
+            const isPass = pwdInput.type === 'password';
+            pwdInput.type = isPass ? 'text' : 'password';
+            togglePwd.textContent = isPass ? '🙈' : '👁';
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await signInWithEmailAndPassword(auth, emailInput.value, pwdInput.value);
+            } catch (error) {
+                errorMessage.textContent = 'بيانات الدخول غير صحيحة.';
+                errorMessage.style.color = '';
+            }
+        });
+
+        document.getElementById('forgot-password').addEventListener('click', async () => {
+            const email = emailInput.value;
+            if (!email) {
+                errorMessage.textContent = 'أدخل بريدك الإلكتروني أولاً.';
+                return;
+            }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                errorMessage.textContent = 'تم إرسال رابط إعادة التعيين.';
+                errorMessage.style.color = 'var(--success)';
+            } catch (error) {
+                errorMessage.textContent = 'حدث خطأ. تأكد من صحة البريد.';
+                errorMessage.style.color = '';
+            }
+        });
+    </script>
+</body>
+</html>

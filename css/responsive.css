@@ -1,0 +1,612 @@
+/* =============================================
+   جذع — Responsive & Large Screen Polish
+   Mobile · Tablet · Desktop · Ultra-wide
+   ============================================= */
+
+:root {
+  --container-max: 1000px;
+  --section-gap: 60px;
+  --grid-gap: 30px;
+  --header-height: auto;
+}
+
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+img, video, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---- Fluid typography (base overrides) ---- */
+body {
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 4vw + 1rem, 4.25rem);
+  line-height: 1.25;
+  background: linear-gradient(45deg, var(--primary), var(--text-main));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero p {
+  font-size: clamp(1rem, 1rem + 0.35vw, 1.35rem);
+  padding: 0 10px;
+}
+
+.section-title {
+  font-size: clamp(1.55rem, 2vw + 0.8rem, 2.35rem);
+}
+
+.section-title::after {
+  width: clamp(40%, 50%, 60%);
+}
+
+.logo-text {
+  font-size: clamp(1.4rem, 2vw + 0.5rem, 2rem);
+}
+
+/* ---- Grid: smarter columns ---- */
+.grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: var(--grid-gap);
+}
+
+/* ---- Touch-friendly targets ---- */
+@media (hover: none) and (pointer: coarse) {
+  .btn, .menu-toggle, #theme-toggle, nav a, .social-links a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+
+  .card:hover .card-img {
+    transform: none;
+  }
+}
+
+/* =============================================
+   TABLET (769px – 1024px)
+   ============================================= */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --grid-gap: 28px;
+    --section-gap: 50px;
+  }
+
+  .container {
+    padding: 0 24px;
+  }
+
+  nav a {
+    font-size: 1rem;
+    margin: 0 6px;
+    padding: 6px 8px;
+  }
+
+  .hero {
+    min-height: 55vh;
+    padding: 50px 24px;
+  }
+
+  .reviews-section {
+    padding: 50px 28px;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+
+  .footer-brand {
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+
+  .footer-brand .footer-logo {
+    justify-content: center;
+  }
+
+  .about-grid {
+    grid-template-columns: 220px 1fr;
+    gap: 30px;
+  }
+}
+
+/* =============================================
+   MOBILE & SMALL TABLET (≤ 768px)
+   ============================================= */
+@media (max-width: 768px) {
+  :root {
+    --grid-gap: 20px;
+    --section-gap: 40px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  /* Header: grid layout */
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "logo actions"
+      "nav nav";
+    align-items: center;
+    gap: 0 12px;
+    padding: 12px 0;
+    margin-bottom: 28px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  .logo-link {
+    grid-area: logo;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .logo-link img {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .header-right {
+    display: contents;
+  }
+
+  .header-actions {
+    grid-area: actions;
+    gap: 8px;
+  }
+
+  .main-nav {
+    grid-area: nav;
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 12px;
+    margin-top: 12px;
+    gap: 4px;
+    box-shadow: 0 8px 24px rgba(62, 39, 35, 0.08);
+  }
+
+  .main-nav.open {
+    display: flex;
+  }
+
+  .main-nav a {
+    width: 100%;
+    text-align: center;
+    padding: 12px 16px;
+    margin: 0;
+    font-size: 1.05rem;
+    border-radius: 10px;
+  }
+
+  .main-nav a.active {
+    background: var(--accent);
+  }
+
+  .menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Hero */
+  .hero {
+    min-height: auto;
+    padding: 40px 16px;
+    margin-bottom: var(--section-gap);
+    border-radius: 16px;
+  }
+
+  .hero::before,
+  .hero::after {
+    width: 120px;
+    height: 120px;
+  }
+
+  .hero-btns {
+    flex-direction: column;
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  .hero-btns .btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Sections */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .section-header .section-title {
+    margin-bottom: 0;
+  }
+
+  .section-title {
+    margin-bottom: 28px;
+  }
+
+  section {
+    margin-bottom: var(--section-gap);
+  }
+
+  .about-section {
+    margin-bottom: var(--section-gap);
+  }
+
+  .about-grid {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 24px !important;
+    gap: 24px;
+  }
+
+  .about-image,
+  .about-image-placeholder {
+    max-width: 200px;
+    margin: 0 auto;
+  }
+
+  .about-image-placeholder {
+    font-size: 3rem;
+  }
+
+  /* Grid: single column on narrow phones */
+  .grid {
+    grid-template-columns: 1fr;
+    margin-bottom: 36px;
+  }
+
+  .card-title {
+    font-size: 1.35rem;
+  }
+
+  .card-content {
+    padding: 20px;
+  }
+
+  .card .btn {
+    width: 100%;
+    text-align: center;
+    align-self: stretch;
+  }
+
+  /* Reviews */
+  .reviews-section {
+    padding: 32px 16px;
+    margin-bottom: var(--section-gap);
+    border-radius: 18px;
+  }
+
+  .reviews-section::before {
+    font-size: 3rem;
+    top: 10px;
+    right: 16px;
+  }
+
+  .reviews-grid {
+    gap: 16px;
+    padding-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding: 16px;
+  }
+
+  .review-card {
+    min-width: min(85vw, 340px);
+    max-width: 85vw;
+    padding: 22px;
+  }
+
+  .review-skeleton-card {
+    min-width: min(85vw, 340px);
+  }
+
+  /* Contact */
+  .contact-section {
+    flex-direction: column;
+    gap: 28px;
+    margin-bottom: var(--section-gap);
+  }
+
+  .contact-info,
+  .contact-form {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .contact-form {
+    padding: 24px 20px;
+  }
+
+  .contact-form input,
+  .contact-form textarea {
+    font-size: 16px; /* prevents iOS zoom */
+  }
+
+  /* Footer */
+  .site-footer {
+    padding-top: 36px;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    text-align: center;
+    padding-bottom: 28px;
+  }
+
+  .footer-brand .footer-logo {
+    justify-content: center;
+  }
+
+  .footer-links {
+    align-items: center;
+  }
+
+  .footer-contact .social-links {
+    justify-content: center;
+  }
+
+  /* Detail pages */
+  .detail-header h1 {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    padding: 0 8px;
+  }
+
+  .detail-cover {
+    border-radius: 14px;
+    max-height: 240px;
+  }
+
+  .detail-content {
+    padding: 24px 18px;
+    font-size: 1.05rem;
+    border-radius: 14px;
+  }
+
+  .detail-meta {
+    flex-direction: column;
+    gap: 8px;
+    font-size: 0.95rem;
+  }
+
+  /* Utilities */
+  #back-to-top {
+    bottom: max(20px, env(safe-area-inset-bottom));
+    right: max(16px, env(safe-area-inset-right));
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .empty-state {
+    padding: 36px 20px;
+  }
+
+  .loader-container {
+    padding: 40px 20px;
+  }
+}
+
+/* =============================================
+   SMALL PHONES (≤ 480px)
+   ============================================= */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 14px;
+  }
+
+  .trunk-badge {
+    font-size: 0.78rem;
+    padding: 4px 12px;
+  }
+
+  .logo-text {
+    font-size: 1.35rem;
+  }
+
+  .reviews-scroll-hint {
+    font-size: 0.82rem;
+  }
+
+  .footer-bottom {
+    font-size: 0.82rem;
+    padding: 16px 0;
+  }
+}
+
+/* =============================================
+   LARGE DESKTOP (≥ 1200px)
+   ============================================= */
+@media (min-width: 1200px) {
+  :root {
+    --container-max: 1140px;
+    --grid-gap: 36px;
+    --section-gap: 70px;
+  }
+
+  .container {
+    max-width: var(--container-max);
+    padding: 0 32px;
+  }
+
+  .hero {
+    min-height: 65vh;
+    padding: 80px 40px;
+  }
+
+  /* Featured home grids: max 3; list pages use auto-fill */
+  #services-grid,
+  #projects-grid,
+  #articles-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .detail-content {
+    padding: 48px 56px;
+  }
+}
+
+/* =============================================
+   EXTRA LARGE / DISPLAY (≥ 1400px)
+   ============================================= */
+@media (min-width: 1400px) {
+  :root {
+    --container-max: 1280px;
+    --grid-gap: 40px;
+  }
+
+  .hero p {
+    max-width: 720px;
+  }
+
+  .about-grid {
+    grid-template-columns: 320px 1fr;
+    gap: 50px;
+  }
+
+  .about-image,
+  .about-image-placeholder {
+    max-width: 320px;
+  }
+
+  .reviews-section {
+    padding: 70px 50px;
+  }
+
+  .review-card {
+    min-width: 340px;
+    max-width: 420px;
+    padding: 36px;
+  }
+
+  .contact-section {
+    gap: 60px;
+  }
+
+  .footer-grid {
+    gap: 50px;
+  }
+}
+
+/* =============================================
+   ULTRA-WIDE (≥ 1800px)
+   ============================================= */
+@media (min-width: 1800px) {
+  :root {
+    --container-max: 1440px;
+  }
+
+  body {
+    font-size: 1.125rem;
+  }
+
+  .hero {
+    min-height: 70vh;
+    margin-bottom: 80px;
+  }
+
+  .hero h1 {
+    font-size: 4.5rem;
+  }
+
+  .section-title {
+    font-size: 2.5rem;
+  }
+
+  /* Readable line length for long-form content */
+  .detail-content {
+    max-width: 920px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 56px 64px;
+    font-size: 1.2rem;
+  }
+
+  .detail-header {
+    max-width: 920px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .detail-cover {
+    max-height: 480px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+  }
+
+  .about-text {
+    font-size: 1.1rem;
+  }
+
+  .grid {
+    gap: 44px;
+  }
+
+  .card-img {
+    height: 240px;
+  }
+}
+
+/* =============================================
+   LANDSCAPE PHONE
+   ============================================= */
+@media (max-width: 768px) and (orientation: landscape) {
+  .hero {
+    min-height: auto;
+    padding: 30px 20px;
+  }
+
+  .hero h1 {
+    font-size: 1.75rem;
+  }
+
+  .main-nav.open {
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+}
+
+/* =============================================
+   CLIENT: write-review page
+   ============================================= */
+@media (max-width: 768px) {
+  .review-box {
+    padding: 28px 20px !important;
+    margin: 0 4px;
+    border-radius: 14px !important;
+  }
+}
+
+/* Admin panel styles → css/admin.css */

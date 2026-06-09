@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>الرسائل الواردة - جذع</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+        <div style="text-align: center; margin-bottom: 10px;"><img src="../assets/logo.png" alt="جذع" style="width: 50px;"></div>
+        <h2>إدارة جذع</h2>
+        <a href="dashboard.html">لوحة التحكم</a>
+        <a href="articles.html">المقالات</a>
+        <a href="projects.html">المشاريع</a>
+        <a href="services.html">الخدمات</a>
+        <a href="reviews.html">آراء العملاء</a>
+        <a href="messages.html" class="active">صندوق الوارد</a>
+        <a href="settings.html">الإعدادات</a>
+        <button id="logout-btn">تسجيل الخروج</button>
+    </aside>
+
+    <main class="main-content">
+        <h1>صندوق الوارد (رسائل الزوار)</h1>
+
+        <div class="card">
+            <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>المرسل</th>
+                        <th>البريد الإلكتروني</th>
+                        <th>التاريخ</th>
+                        <th>الرسالة</th>
+                        <th style="width: 100px;">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="messages-list">
+                    <tr><td colspan="5" style="text-align:center;">جاري تحميل الرسائل...</td></tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/admin.js"></script>
+    <script type="module">
+        import { auth, onAuthStateChanged, signOut, db, collection, deleteDoc, doc, onSnapshot, query, orderBy } from '../firebase/firebase.js';
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = 'login.html';
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        // Load Messages
+        const q = query(collection(db, "messages"), orderBy("date", "desc"));
+        onSnapshot(q, (snapshot) => {
+            const list = document.getElementById('messages-list');
+            if (snapshot.empty) {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center;">لا توجد رسائل جديدة.</td></tr>';
+                return;
+            }
+            list.innerHTML = '';
+            snapshot.forEach((documentSnap) => {
+                const data = documentSnap.data();
+                const d = new Date(data.date);
+                const dateStr = d.toLocaleDateString('ar-EG') + ' ' + d.toLocaleTimeString('ar-EG');
+                list.innerHTML += `
+                    <tr>
+                        <td><strong>${data.name}</strong></td>
+                        <td><a href="mailto:${data.email}" dir="ltr" style="color:var(--admin-primary);">${data.email}</a></td>
+                        <td><span dir="ltr">${dateStr}</span></td>
+                        <td><p style="font-size:0.9rem;margin:0;max-width:280px;white-space:pre-wrap;color:var(--admin-text-muted);">${data.message}</p></td>
+                        <td><div class="table-actions"><button class="btn btn-danger btn-sm" onclick="deleteMessage('${documentSnap.id}')">حذف</button></div></td>
+                    </tr>
+                `;
+            });
+        });
+
+        window.deleteMessage = async (id) => {
+            if (confirm('هل أنت متأكد من حذف هذه الرسالة نهائياً؟')) {
+                await deleteDoc(doc(db, "messages", id));
+            }
+        };
+    </script>
+</body>
+
+</html>

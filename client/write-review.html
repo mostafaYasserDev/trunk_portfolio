@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شاركنا رأيك - جذع</title>
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <style>
+        body { background-color: var(--background); padding: 40px 20px; }
+        .review-box {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid var(--border-color);
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 10px; font-weight: bold; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 12px; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: inherit; box-sizing: border-box; font-size: 1rem;
+        }
+        .msg { margin-top: 15px; font-size: 1rem; text-align: center; font-weight: bold; }
+        .msg.success { color: var(--accent-dark); }
+        .msg.error { color: var(--danger); }
+        .thank-you-box {
+            text-align: center;
+            padding: 20px 0;
+            display: none;
+        }
+        .thank-you-box .emoji { font-size: 4rem; margin-bottom: 15px; }
+        .back-link { display: block; text-align: center; margin-top: 25px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="review-box">
+        <div class="logo" style="text-align: center; margin-bottom: 20px;">جذع <span>.</span></div>
+
+        <div id="form-section">
+            <h2 class="section-title" style="font-size: 1.8rem; text-align: center; display: block;">شاركنا رأيك</h2>
+            <p style="text-align: center; color: var(--text-muted); margin-bottom: 30px;">يسعدني سماع تجربتك. شاركني رأيك بحرية — سيُراجع قبل النشر في الموقع.</p>
+
+            <form id="review-form">
+                <div class="form-group">
+                    <label for="client-name">اسمك أو اسم شركتك</label>
+                    <input type="text" id="client-name" placeholder="مثال: أحمد محمد / شركة النور" required>
+                </div>
+                <div class="form-group">
+                    <label for="service-name">الخدمة التي قدمتها لك (اختياري)</label>
+                    <input type="text" id="service-name" placeholder="مثال: تصميم موقع، تطوير تطبيق...">
+                </div>
+                <div class="form-group">
+                    <label for="review-text">رأيك وتجربتك</label>
+                    <textarea id="review-text" rows="5" placeholder="اكتب رأيك هنا..." required></textarea>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">إرسال الرأي</button>
+                <div id="status-msg" class="msg"></div>
+            </form>
+        </div>
+
+        <div id="thank-you" class="thank-you-box">
+            <div class="emoji">🌿</div>
+            <h2 class="section-title" style="display: block; text-align: center;">شكراً لمشاركتك!</h2>
+            <p style="color: var(--text-muted); line-height: 1.9;">يسعدني جداً أنك شاركت تجربتك معي. سأراجع رأيك وأعرضه في الموقع قريباً بإذن الله.</p>
+            <a href="../index.html" class="btn" style="margin-top: 20px;">العودة للرئيسية</a>
+        </div>
+
+        <a href="../index.html" class="back-link" id="back-link">← العودة للموقع</a>
+    </div>
+
+    <script type="module">
+        import { db, collection, addDoc } from '../firebase/firebase.js';
+
+        document.getElementById('review-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('status-msg');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'جاري الإرسال...';
+
+            try {
+                await addDoc(collection(db, 'reviews'), {
+                    clientName: document.getElementById('client-name').value.trim(),
+                    serviceName: document.getElementById('service-name').value.trim(),
+                    reviewText: document.getElementById('review-text').value.trim(),
+                    visible: false,
+                    date: new Date().toISOString()
+                });
+                document.getElementById('form-section').style.display = 'none';
+                document.getElementById('back-link').style.display = 'none';
+                document.getElementById('thank-you').style.display = 'block';
+            } catch (error) {
+                msg.textContent = 'حدث خطأ أثناء الإرسال. حاول مرة أخرى.';
+                msg.className = 'msg error';
+                console.error(error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'إرسال الرأي';
+            }
+        });
+    </script>
+</body>
+</html>

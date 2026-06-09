@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta id="meta-description" name="description" content="جذع - بورتفوليو شخصي. أروي حكايات برمجية بروح فنية ولمسة إبداعية.">
+    <meta id="og-title" property="og:title" content="جذع - حكاية تنمو">
+    <meta id="og-description" property="og:description" content="جذع - بورتفوليو شخصي. أروي حكايات برمجية بروح فنية ولمسة إبداعية.">
+    <meta id="og-image" property="og:image" content="">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ar_AR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta id="twitter-title" name="twitter:title" content="جذع - حكاية تنمو">
+    <meta id="twitter-description" name="twitter:description" content="جذع - بورتفوليو شخصي. أروي حكايات برمجية بروح فنية ولمسة إبداعية.">
+    <meta id="twitter-image" name="twitter:image" content="">
+    <title>جذع - حكاية تنمو</title>
+    <link rel="icon" href="assets/logo.png" type="image/png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8C5A35">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <a href="#home" class="logo logo-link">
+                <img src="assets/logo.png" alt="جذع">
+                <div class="logo-text">جذع <span>.</span></div>
+            </a>
+            <div class="header-right">
+                <nav id="main-nav" class="main-nav">
+                    <a href="#home">الرئيسية</a>
+                    <a href="#services">الخدمات</a>
+                    <a href="#projects">المشاريع</a>
+                    <a href="#articles">المقالات</a>
+                    <a href="#contact">تواصل معي</a>
+                </nav>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="btn" aria-label="تبديل الوضع الليلي">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button id="menu-toggle" class="menu-toggle" aria-label="فتح القائمة" aria-expanded="false">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main id="app-root"></main>
+
+        <footer class="site-footer">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="#home" class="footer-logo">
+                        <img src="assets/logo.png" alt="جذع">
+                        <span>جذع <span style="color: var(--accent-dark);">.</span></span>
+                    </a>
+                    <p>أروي حكايات برمجية بروح فنية. تتأصل الأفكار وتنمو كالأشجار.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>روابط سريعة</h4>
+                    <a href="#home">الرئيسية</a>
+                    <a href="#services">الخدمات</a>
+                    <a href="#projects">المشاريع</a>
+                    <a href="#articles">المقالات</a>
+                    <a href="#contact">تواصل معي</a>
+                    <a href="client/write-review.html">اكتب رأيك</a>
+                </div>
+                <div class="footer-contact">
+                    <h4>تواصل معي</h4>
+                    <div id="footer-contact-info">
+                        <p>جاري التحميل...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>حكاية جذع &copy; 2026. جميع الحقوق محفوظة.</p>
+            </div>
+        </footer>
+    </div>
+
+    <button id="back-to-top" title="العودة للأعلى" aria-label="العودة للأعلى">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script type="module">
+        import { initUI } from './js/ui.js';
+        initUI();
+    </script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
