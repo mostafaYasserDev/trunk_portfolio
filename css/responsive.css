@@ -164,8 +164,8 @@ body {
   }
 
   .logo-link img {
-    width: 36px;
-    height: 36px;
+  width: 60px;
+  height: 60px;
     flex-shrink: 0;
   }
 
