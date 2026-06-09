@@ -48,15 +48,15 @@
             <form id="review-form">
                 <div class="form-group">
                     <label for="client-name">اسمك أو اسم شركتك</label>
-                    <input type="text" id="client-name" placeholder="مثال: أحمد محمد / شركة النور" required>
+                    <input type="text" id="client-name" placeholder="مثال: أحمد محمد / شركة النور" required maxlength="100">
                 </div>
                 <div class="form-group">
                     <label for="service-name">الخدمة التي قدمتها لك (اختياري)</label>
-                    <input type="text" id="service-name" placeholder="مثال: تصميم موقع، تطوير تطبيق...">
+                    <input type="text" id="service-name" placeholder="مثال: تصميم موقع، تطوير تطبيق..." maxlength="120">
                 </div>
                 <div class="form-group">
                     <label for="review-text">رأيك وتجربتك</label>
-                    <textarea id="review-text" rows="5" placeholder="اكتب رأيك هنا..." required></textarea>
+                    <textarea id="review-text" rows="5" placeholder="اكتب رأيك هنا..." required maxlength="2000"></textarea>
                 </div>
                 <button type="submit" class="btn" style="width: 100%;">إرسال الرأي</button>
                 <div id="status-msg" class="msg"></div>
@@ -75,22 +75,56 @@
 
     <script type="module">
         import { db, collection, addDoc } from '../firebase/public.js';
+        import { createSpamGuard, sanitizeText } from '../js/spam-guard.js';
 
-        document.getElementById('review-form').addEventListener('submit', async (e) => {
+        const form = document.getElementById('review-form');
+        const spam = createSpamGuard('review', {
+            cooldownMs: 120000,
+            maxLengths: { clientName: 100, serviceName: 120, reviewText: 2000 }
+        });
+        spam.attachToForm(form);
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('status-msg');
             const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            const payload = {
+                clientName: sanitizeText(document.getElementById('client-name').value, 100),
+                serviceName: sanitizeText(document.getElementById('service-name').value, 120),
+                reviewText: sanitizeText(document.getElementById('review-text').value, 2000)
+            };
+
+            const check = spam.validate(form, {
+                clientName: payload.clientName,
+                serviceName: payload.serviceName,
+                reviewText: payload.reviewText
+            });
+            if (!check.ok) {
+                msg.textContent = check.message;
+                msg.className = 'msg error';
+                return;
+            }
+            if (payload.clientName.length < 2 || payload.reviewText.length < 10) {
+                msg.textContent = 'الاسم أو الرأي قصير جداً.';
+                msg.className = 'msg error';
+                return;
+            }
+
             submitBtn.disabled = true;
             submitBtn.textContent = 'جاري الإرسال...';
+            msg.textContent = '';
 
             try {
                 await addDoc(collection(db, 'reviews'), {
-                    clientName: document.getElementById('client-name').value.trim(),
-                    serviceName: document.getElementById('service-name').value.trim(),
-                    reviewText: document.getElementById('review-text').value.trim(),
+                    clientName: payload.clientName,
+                    serviceName: payload.serviceName,
+                    reviewText: payload.reviewText,
                     visible: false,
-                    date: new Date().toISOString()
+                    date: new Date().toISOString(),
+                    source: 'public-review-form'
                 });
+                spam.recordSubmit();
                 document.getElementById('form-section').style.display = 'none';
                 document.getElementById('back-link').style.display = 'none';
                 document.getElementById('thank-you').style.display = 'block';

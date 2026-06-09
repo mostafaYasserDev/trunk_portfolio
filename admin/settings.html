@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>الإعدادات - جذع</title>
     <link rel="stylesheet" href="../css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
@@ -49,27 +50,44 @@
             <div class="card">
                 <h3>معلومات التواصل (تظهر في الفوتر وقسم التواصل)</h3>
                 <form id="contact-form">
-                    <div class="form-group">
-                        <label>البريد الإلكتروني للتواصل</label>
-                        <input type="email" id="contact-email" class="form-control">
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label>البريد الإلكتروني للتواصل</label>
+                            <input type="email" id="contact-email" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>رقم الهاتف</label>
+                            <input type="text" id="contact-phone" class="form-control" dir="ltr" style="text-align: left;">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>رقم الهاتف</label>
-                        <input type="text" id="contact-phone" class="form-control" dir="ltr" style="text-align: left;">
+
+                    <h4 style="margin: 20px 0 10px; color: var(--admin-primary);">الروابط الأساسية</h4>
+                    <p class="hint">تليجرام، لينكدإن، وجيتهب — تظهر دائماً بأيقوناتها الرسمية في الموقع.</p>
+
+                    <div class="primary-social-grid">
+                        <div class="primary-social-item">
+                            <label for="contact-telegram"><i class="fab fa-telegram"></i> تليجرام</label>
+                            <input type="text" id="contact-telegram" class="form-control" dir="ltr" style="text-align:left;" placeholder="@username أو https://t.me/...">
+                            <label class="checkbox-label"><input type="checkbox" id="telegram-visible" checked> إظهار في الموقع</label>
+                        </div>
+                        <div class="primary-social-item">
+                            <label for="contact-linkedin"><i class="fab fa-linkedin-in"></i> لينكدإن</label>
+                            <input type="url" id="contact-linkedin" class="form-control" dir="ltr" style="text-align:left;" placeholder="https://linkedin.com/in/...">
+                            <label class="checkbox-label"><input type="checkbox" id="linkedin-visible" checked> إظهار في الموقع</label>
+                        </div>
+                        <div class="primary-social-item">
+                            <label for="contact-github"><i class="fab fa-github"></i> جيتهب</label>
+                            <input type="url" id="contact-github" class="form-control" dir="ltr" style="text-align:left;" placeholder="https://github.com/...">
+                            <label class="checkbox-label"><input type="checkbox" id="github-visible" checked> إظهار في الموقع</label>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>معرف التليجرام (بدون @)</label>
-                        <input type="text" id="contact-telegram" class="form-control" dir="ltr" style="text-align: left;">
-                    </div>
-                    <div class="form-group">
-                        <label>رابط لينكدإن</label>
-                        <input type="url" id="contact-linkedin" class="form-control" dir="ltr" style="text-align: left;">
-                    </div>
-                    <div class="form-group">
-                        <label>رابط جيتهب</label>
-                        <input type="url" id="contact-github" class="form-control" dir="ltr" style="text-align: left;">
-                    </div>
-                    <button type="submit" class="btn">حفظ معلومات التواصل</button>
+
+                    <h4 style="margin: 24px 0 10px; color: var(--admin-primary);">روابط تواصل أخرى</h4>
+                    <p class="hint">أضف منصات إضافية (إنستغرام، فيسبوك، قبيلة، مرتكز…). الأيقونات المخصصة تظهر بحجم أكبر وبدون تشويه.</p>
+                    <div id="extra-social-list"></div>
+                    <button type="button" class="btn btn-outline btn-sm" id="add-extra-social" style="margin-top: 10px;">+ إضافة رابط تواصل آخر</button>
+
+                    <button type="submit" class="btn" style="margin-top: 20px;">حفظ معلومات التواصل</button>
                     <div id="contact-msg" class="msg"></div>
                 </form>
             </div>
@@ -77,6 +95,11 @@
             <div class="card" style="grid-column: 1 / -1;">
                 <h3>إعدادات الصفحة الرئيسية</h3>
                 <form id="general-form">
+                    <div class="form-group">
+                        <label for="about-text">نبذة «من أنا؟»</label>
+                        <textarea id="about-text" class="form-control" rows="8" placeholder="اكتب نبذتك هنا..."></textarea>
+                        <p class="hint">افصل بين الفقرات بسطر فارغ.</p>
+                    </div>
                     <div class="general-grid">
                         <div>
                             <div class="form-group">
@@ -106,6 +129,8 @@
     <script src="../js/admin.js"></script>
     <script type="module">
         import { auth, onAuthStateChanged, signOut, updateEmail, updatePassword, db, doc, getDoc, setDoc } from '../firebase/firebase.js';
+        import { normalizeContactSocial, DEFAULT_ABOUT_TEXT } from '../js/social.js';
+        import { initExtraSocialLinksManager, getExtraSocialLinksFromManager } from '../js/admin-settings.js';
 
         const MAX_CV_SIZE = 800 * 1024;
 
@@ -144,16 +169,26 @@
         });
 
         const contactRef = doc(db, 'settings', 'contact');
+        const extraListEl = document.getElementById('extra-social-list');
+        const addExtraBtn = document.getElementById('add-extra-social');
+
         async function loadContactSettings() {
             const snap = await getDoc(contactRef);
-            if (snap.exists()) {
-                const data = snap.data();
-                document.getElementById('contact-email').value = data.email || '';
-                document.getElementById('contact-phone').value = data.phone || '';
-                document.getElementById('contact-telegram').value = data.telegram || '';
-                document.getElementById('contact-linkedin').value = data.linkedin || '';
-                document.getElementById('contact-github').value = data.github || '';
-            }
+            const data = snap.exists() ? snap.data() : {};
+            const { primary, extras } = normalizeContactSocial(data);
+
+            document.getElementById('contact-email').value = data.email || '';
+            document.getElementById('contact-phone').value = data.phone || '';
+
+            document.getElementById('contact-telegram').value = data.telegram
+                || (primary.telegram.url ? primary.telegram.url.replace(/^https:\/\/t\.me\//, '') : '');
+            document.getElementById('contact-linkedin').value = data.linkedin || primary.linkedin.url || '';
+            document.getElementById('contact-github').value = data.github || primary.github.url || '';
+            document.getElementById('telegram-visible').checked = primary.telegram.visible;
+            document.getElementById('linkedin-visible').checked = primary.linkedin.visible;
+            document.getElementById('github-visible').checked = primary.github.visible;
+
+            initExtraSocialLinksManager(extraListEl, addExtraBtn, extras);
         }
         loadContactSettings();
 
@@ -162,12 +197,16 @@
             const msg = document.getElementById('contact-msg');
             try {
                 await setDoc(contactRef, {
-                    email: document.getElementById('contact-email').value,
-                    phone: document.getElementById('contact-phone').value,
-                    telegram: document.getElementById('contact-telegram').value,
-                    linkedin: document.getElementById('contact-linkedin').value,
-                    github: document.getElementById('contact-github').value,
-                });
+                    email: document.getElementById('contact-email').value.trim(),
+                    phone: document.getElementById('contact-phone').value.trim(),
+                    telegram: document.getElementById('contact-telegram').value.trim(),
+                    linkedin: document.getElementById('contact-linkedin').value.trim(),
+                    github: document.getElementById('contact-github').value.trim(),
+                    telegramVisible: document.getElementById('telegram-visible').checked,
+                    linkedinVisible: document.getElementById('linkedin-visible').checked,
+                    githubVisible: document.getElementById('github-visible').checked,
+                    extraSocialLinks: getExtraSocialLinksFromManager()
+                }, { merge: true });
                 msg.textContent = 'تم حفظ معلومات التواصل.';
                 msg.className = 'msg success';
             } catch (error) {
@@ -224,6 +263,7 @@
                 const data = snap.data();
                 currentCvData = data.cvData || '';
                 currentAboutImage = data.aboutImage || '';
+                document.getElementById('about-text').value = data.aboutText || DEFAULT_ABOUT_TEXT;
 
                 if (currentCvData) {
                     document.getElementById('cv-status').textContent = '✅ تم رفع السيرة الذاتية.';
@@ -235,6 +275,8 @@
                     preview.style.display = 'block';
                     document.getElementById('remove-about-btn').style.display = 'inline-block';
                 }
+            } else {
+                document.getElementById('about-text').value = DEFAULT_ABOUT_TEXT;
             }
         }
         loadGeneralSettings();
@@ -293,6 +335,7 @@
                 await setDoc(generalRef, {
                     cvData,
                     aboutImage,
+                    aboutText: document.getElementById('about-text').value.trim(),
                     cvUrl: null
                 }, { merge: true });
 

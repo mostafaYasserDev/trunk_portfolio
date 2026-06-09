@@ -50,6 +50,8 @@
     <script src="../js/admin.js"></script>
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, deleteDoc, doc, onSnapshot, query, orderBy } from '../firebase/firebase.js';
+        import { escapeHtml } from '../js/security.js';
+        import { renderLongTextCell, bindViewTextButtons } from '../js/admin-ui.js';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login.html';
@@ -57,8 +59,7 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-        // Load Messages
-        const q = query(collection(db, "messages"), orderBy("date", "desc"));
+        const q = query(collection(db, 'messages'), orderBy('date', 'desc'));
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('messages-list');
             if (snapshot.empty) {
@@ -70,23 +71,30 @@
                 const data = documentSnap.data();
                 const d = new Date(data.date);
                 const dateStr = d.toLocaleDateString('ar-EG') + ' ' + d.toLocaleTimeString('ar-EG');
-                list.innerHTML += `
-                    <tr>
-                        <td><strong>${data.name}</strong></td>
-                        <td><a href="mailto:${data.email}" dir="ltr" style="color:var(--admin-primary);">${data.email}</a></td>
-                        <td><span dir="ltr">${dateStr}</span></td>
-                        <td><p style="font-size:0.9rem;margin:0;max-width:280px;white-space:pre-wrap;color:var(--admin-text-muted);">${data.message}</p></td>
-                        <td><div class="table-actions"><button class="btn btn-danger btn-sm" onclick="deleteMessage('${documentSnap.id}')">حذف</button></div></td>
-                    </tr>
+                const safeName = escapeHtml(data.name || '—');
+                const safeEmail = escapeHtml(data.email || '');
+                const meta = `<p><strong>من:</strong> ${safeName} · <a href="mailto:${safeEmail}">${safeEmail}</a></p><p><strong>التاريخ:</strong> <span dir="ltr">${escapeHtml(dateStr)}</span></p>`;
+                const msgCell = renderLongTextCell(data.message, 'الرسالة كاملة', meta, 80);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${safeName}</strong></td>
+                    <td><a href="mailto:${safeEmail}" dir="ltr" style="color:var(--admin-primary);">${safeEmail}</a></td>
+                    <td><span dir="ltr">${escapeHtml(dateStr)}</span></td>
+                    <td class="table-text-cell">${msgCell}</td>
+                    <td><div class="table-actions"><button type="button" class="btn btn-danger btn-sm" data-delete-id="${documentSnap.id}">حذف</button></div></td>
                 `;
+                list.appendChild(row);
+            });
+
+            bindViewTextButtons(list);
+            list.querySelectorAll('[data-delete-id]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    if (confirm('هل أنت متأكد من حذف هذه الرسالة نهائياً؟')) {
+                        await deleteDoc(doc(db, 'messages', btn.dataset.deleteId));
+                    }
+                });
             });
         });
-
-        window.deleteMessage = async (id) => {
-            if (confirm('هل أنت متأكد من حذف هذه الرسالة نهائياً؟')) {
-                await deleteDoc(doc(db, "messages", id));
-            }
-        };
     </script>
 </body>
 

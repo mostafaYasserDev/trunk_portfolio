@@ -53,12 +53,12 @@
 
                 <div class="form-grid-2">
                     <div class="form-group">
-                        <label for="proj-demo">رابط المعاينة</label>
-                        <input type="url" id="proj-demo" class="form-control" dir="ltr" placeholder="https://">
+                        <label for="proj-demo">رابط المعاينة <span class="hint">(اختياري)</span></label>
+                        <input type="url" id="proj-demo" class="form-control" dir="ltr" placeholder="https:// — اتركه فارغاً إن لم يتوفر عرض حي">
                     </div>
                     <div class="form-group">
-                        <label for="proj-github">رابط جيتهب</label>
-                        <input type="url" id="proj-github" class="form-control" dir="ltr" placeholder="https://github.com/...">
+                        <label for="proj-github">رابط جيتهب / الكود المصدري <span class="hint">(اختياري)</span></label>
+                        <input type="url" id="proj-github" class="form-control" dir="ltr" placeholder="https://github.com/... — اتركه فارغاً للمشاريع الخاصة">
                     </div>
                 </div>
 
@@ -217,10 +217,14 @@
                     progressDiv.textContent = '';
                 }
                 const projectData = {
-                    title: titleInput.value, technologies: techInput.value,
-                    shortDescription: shortInput.value, fullDescription: fullInput.value,
-                    demoLink: demoInput.value, githubLink: githubInput.value,
-                    featured: featuredInput.checked, mainImage
+                    title: titleInput.value.trim(),
+                    technologies: techInput.value.trim(),
+                    shortDescription: shortInput.value.trim(),
+                    fullDescription: fullInput.value.trim(),
+                    demoLink: demoInput.value.trim(),
+                    githubLink: githubInput.value.trim(),
+                    featured: featuredInput.checked,
+                    mainImage
                 };
                 if (idInput.value) {
                     await updateDoc(doc(db, 'projects', idInput.value), projectData);

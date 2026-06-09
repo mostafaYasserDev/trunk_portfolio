@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jidhe-v4';
+const CACHE_NAME = 'jidhe-v7';
 const ASSETS = [
     './',
     './index.html',
@@ -6,6 +6,10 @@ const ASSETS = [
     './css/responsive.css',
     './js/app.js',
     './js/helpers.js',
+    './js/spam-guard.js',
+    './js/security.js',
+    './js/social.js',
+    './js/social-modal.js',
     './js/ui.js',
     './firebase/public.js',
     './assets/logo.png',

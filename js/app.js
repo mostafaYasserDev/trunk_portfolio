@@ -1,8 +1,9 @@
 import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc, startAfter } from '../firebase/public.js';
 import {
     LOADER_HTML, skeletonCards, skeletonReviews, emptyState, showError, buildContactHtml,
-    escapeHtml, updatePageMeta, PAGE_META, initReadingProgress, removeReadingProgress
+    escapeHtml, updatePageMeta, PAGE_META, initReadingProgress, removeReadingProgress, buildAboutHtml
 } from './helpers.js';
+import { bindSocialModals } from './social-modal.js';
 
 const appRoot = document.getElementById('app-root');
 const REVIEWS_LIMIT = 8;
@@ -37,6 +38,7 @@ function applyContactHtml(html) {
     if (footerEl) footerEl.innerHTML = html;
     const contactEl = document.getElementById('dynamic-contact-info');
     if (contactEl) contactEl.innerHTML = html;
+    bindSocialModals(document, escapeHtml);
 }
 
 function applyContactSnap(snap) {
@@ -172,6 +174,10 @@ function applyGeneralSettings(snap) {
     if (aboutContainer && data.aboutImage) {
         aboutContainer.innerHTML = `<img src="${data.aboutImage}" alt="صورة شخصية" class="about-image content-in" loading="lazy" decoding="async">`;
     }
+    const aboutTextEl = document.getElementById('about-text-content');
+    if (aboutTextEl && data.aboutText) {
+        aboutTextEl.innerHTML = buildAboutHtml(data.aboutText, escapeHtml);
+    }
 }
 
 let generalSettingsLoaded = false;
@@ -254,10 +260,35 @@ function bindHomeContactForm() {
     if (!contactForm || contactForm.dataset.bound === '1') return;
     contactForm.dataset.bound = '1';
 
+    const spam = createSpamGuard('contact', {
+        maxLengths: { name: 100, email: 120, message: 3000 }
+    });
+    spam.attachToForm(contactForm);
+
     contactForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = contactForm.querySelector('button[type="submit"]');
         const statusEl = document.getElementById('form-status');
+        const payload = {
+            name: sanitizeText(document.getElementById('contact-name').value, 100),
+            email: sanitizeText(document.getElementById('contact-email-input').value, 120),
+            message: sanitizeText(document.getElementById('contact-message').value, 3000)
+        };
+
+        const check = spam.validate(contactForm, payload);
+        if (!check.ok) {
+            statusEl.textContent = check.message;
+            statusEl.className = 'form-status error';
+            statusEl.style.display = 'block';
+            return;
+        }
+        if (!isValidEmail(payload.email)) {
+            statusEl.textContent = 'أدخل بريداً إلكترونياً صحيحاً.';
+            statusEl.className = 'form-status error';
+            statusEl.style.display = 'block';
+            return;
+        }
+
         btn.disabled = true;
         btn.textContent = 'جاري الإرسال...';
         statusEl.className = 'form-status';
@@ -265,19 +296,24 @@ function bindHomeContactForm() {
         try {
             const { addDoc } = await import('../firebase/public.js');
             await addDoc(collection(db, 'messages'), {
-                name: document.getElementById('contact-name').value,
-                email: document.getElementById('contact-email-input').value,
-                message: document.getElementById('contact-message').value,
+                name: payload.name,
+                email: payload.email,
+                message: payload.message,
                 date: new Date().toISOString(),
-                read: false
+                read: false,
+                source: 'contact-form'
             });
+            spam.recordSubmit();
             contactForm.reset();
+            spam.attachToForm(contactForm);
             statusEl.textContent = 'تم إرسال رسالتك بنجاح! سأتواصل معك قريباً.';
             statusEl.className = 'form-status success';
+            statusEl.style.display = 'block';
         } catch (err) {
             console.error(err);
             statusEl.textContent = 'حدث خطأ أثناء الإرسال. حاول مجدداً.';
             statusEl.className = 'form-status error';
+            statusEl.style.display = 'block';
         } finally {
             btn.textContent = 'إرسال الرسالة';
             btn.disabled = false;
@@ -402,6 +438,7 @@ async function renderProjectDetail(id) {
                         <div style="margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
                             ${data.demoLink ? `<a href="${escapeHtml(data.demoLink)}" target="_blank" rel="noopener" class="btn">معاينة حية</a>` : ''}
                             ${data.githubLink ? `<a href="${escapeHtml(data.githubLink)}" target="_blank" rel="noopener" class="btn" style="background:var(--text-main);">الكود المصدري</a>` : ''}
+                            ${!data.demoLink && !data.githubLink ? '' : ''}
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px;">

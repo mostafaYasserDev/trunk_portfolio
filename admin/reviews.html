@@ -53,6 +53,8 @@
     <script src="../js/admin.js"></script>
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
+        import { escapeHtml } from '../js/security.js';
+        import { renderLongTextCell, bindViewTextButtons } from '../js/admin-ui.js';
 
         onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login.html'; });
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
@@ -69,29 +71,44 @@
             list.innerHTML = '';
             snapshot.forEach((documentSnap) => {
                 const data = documentSnap.data();
-                list.innerHTML += `
-                    <tr>
-                        <td><strong>${data.clientName || '—'}</strong></td>
-                        <td>${data.serviceName ? `<span class="service-tag">${data.serviceName}</span>` : '—'}</td>
-                        <td><p style="font-size:0.9rem;margin:0;color:var(--admin-text-muted);max-width:280px;">${data.reviewText}</p></td>
-                        <td>
-                            <label class="switch">
-                                <input type="checkbox" onchange="toggleVisibility('${documentSnap.id}', this.checked)" ${data.visible ? 'checked' : ''}>
-                                <span class="slider-toggle"></span>
-                            </label>
-                        </td>
-                        <td><div class="table-actions"><button class="btn btn-danger btn-sm" onclick="deleteReview('${documentSnap.id}')">حذف</button></div></td>
-                    </tr>`;
+                const id = documentSnap.id;
+                const safeName = escapeHtml(data.clientName || '—');
+                const safeService = escapeHtml(data.serviceName || '');
+                const serviceCell = safeService ? `<span class="service-tag">${safeService}</span>` : '—';
+                const meta = `<p><strong>العميل:</strong> ${safeName}</p>${safeService ? `<p><strong>الخدمة:</strong> ${safeService}</p>` : ''}`;
+                const reviewCell = renderLongTextCell(data.reviewText, 'الرأي كاملاً', meta, 80);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${safeName}</strong></td>
+                    <td>${serviceCell}</td>
+                    <td class="table-text-cell">${reviewCell}</td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox" class="review-visible-toggle" data-review-id="${id}" ${data.visible ? 'checked' : ''}>
+                            <span class="slider-toggle"></span>
+                        </label>
+                    </td>
+                    <td><div class="table-actions"><button type="button" class="btn btn-danger btn-sm" data-delete-id="${id}">حذف</button></div></td>
+                `;
+                list.appendChild(row);
+            });
+
+            bindViewTextButtons(list);
+
+            list.querySelectorAll('.review-visible-toggle').forEach((input) => {
+                input.addEventListener('change', async () => {
+                    await updateDoc(doc(db, 'reviews', input.dataset.reviewId), { visible: input.checked });
+                });
+            });
+
+            list.querySelectorAll('[data-delete-id]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    if (confirm('هل أنت متأكد من حذف هذا الرأي؟')) {
+                        await deleteDoc(doc(db, 'reviews', btn.dataset.deleteId));
+                    }
+                });
             });
         });
-
-        window.toggleVisibility = async (id, isVisible) => {
-            await updateDoc(doc(db, 'reviews', id), { visible: isVisible });
-        };
-
-        window.deleteReview = async (id) => {
-            if (confirm('هل أنت متأكد من حذف هذا الرأي؟')) await deleteDoc(doc(db, 'reviews', id));
-        };
     </script>
 </body>
 </html>

@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    function safePlainText(value, minLen, maxLen) {
+      return value is string
+        && value.size() >= minLen
+        && value.size() <= maxLen
+        && !value.matches('.*[<>].*')
+        && !value.matches('(?i).*(<script|javascript:|onerror|onload|onclick|onmouseover|<iframe|<object|<embed).*');
+    }
+
+    function safeOptionalText(value, maxLen) {
+      return value == null
+        || (value is string && value.size() <= maxLen && !value.matches('.*[<>].*'));
+    }
+
+    function validMessage() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['name', 'email', 'message', 'date', 'read'])
+        && safePlainText(d.name, 2, 100)
+        && safePlainText(d.email, 5, 120)
+        && d.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
+        && safePlainText(d.message, 10, 3000)
+        && d.read == false
+        && d.date is string
+        && d.date.size() <= 40
+        && (!('source' in d) || safeOptionalText(d.source, 40));
+    }
+
+    function validReview() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['clientName', 'reviewText', 'visible', 'date'])
+        && safePlainText(d.clientName, 2, 100)
+        && safePlainText(d.reviewText, 10, 2000)
+        && d.visible == false
+        && d.date is string
+        && d.date.size() <= 40
+        && (!('serviceName' in d) || safeOptionalText(d.serviceName, 120))
+        && (!('source' in d) || safeOptionalText(d.source, 40));
+    }
+
+    match /messages/{docId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if validMessage();
+    }
+
+    match /reviews/{docId} {
+      allow read: if resource.data.visible == true || isAdmin();
+      allow create: if validReview();
+      allow update, delete: if isAdmin();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /services/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /projects/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /articles/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

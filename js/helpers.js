@@ -1,3 +1,8 @@
+import { buildSocialHtml as buildSocialFromData, buildAboutHtml, DEFAULT_ABOUT_TEXT } from './social.js';
+import { escapeHtml } from './security.js';
+
+export { buildAboutHtml, DEFAULT_ABOUT_TEXT, escapeHtml };
+
 export const LOADER_HTML = `
     <div class="loader-container">
         <div class="tree-spinner"></div>
@@ -43,26 +48,12 @@ const DEFAULT_META = {
     description: 'جذع - بورتفوليو شخصي. أروي حكايات برمجية بروح فنية ولمسة إبداعية.'
 };
 
-export function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
-
 export function showError(msg) {
     return `<div class="error-state"><p>${escapeHtml(msg)}</p></div>`;
 }
 
 export function buildSocialHtml(data) {
-    let html = '<div class="social-links">';
-    if (data.telegram) html += `<a href="https://t.me/${escapeHtml(data.telegram)}" target="_blank" rel="noopener" title="تليجرام" aria-label="تليجرام"><i class="fab fa-telegram"></i><span>تليجرام</span></a>`;
-    if (data.linkedin) html += `<a href="${escapeHtml(data.linkedin)}" target="_blank" rel="noopener" title="لينكدإن" aria-label="لينكدإن"><i class="fab fa-linkedin-in"></i><span>لينكدإن</span></a>`;
-    if (data.github) html += `<a href="${escapeHtml(data.github)}" target="_blank" rel="noopener" title="جيتهب" aria-label="جيتهب"><i class="fab fa-github"></i><span>جيتهب</span></a>`;
-    html += '</div>';
-    return html;
+    return buildSocialFromData(data, escapeHtml);
 }
 
 export function buildContactHtml(data) {

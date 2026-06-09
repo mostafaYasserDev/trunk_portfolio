@@ -1,10 +1,10 @@
-# إعدادات Netlify — موقع جذع
-# الموقع يستخدم hash routing (#home) ولا يحتاج إعادة توجيه SPA شاملة
+# موقع جذع — استضافة ثابتة (بدون build)
+# إذا كان Netlify يشغّل Vite أو build آخر من لوحة التحكم، احذف أمر البناء من هناك.
 
 [build]
+  command = ""
   publish = "."
 
-# ضمان وصول لوحة التحكم كملفات ثابتة (لا تُحوَّل إلى index.html)
 [[redirects]]
   from = "/admin/*"
   to = "/admin/:splat"
@@ -23,11 +23,25 @@
   status = 302
 
 [[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; font-src 'self' data: https://cdnjs.cloudflare.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net wss://*.firebaseio.com https://www.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+[[headers]]
   for = "/*.js"
   [headers.values]
     Content-Type = "application/javascript; charset=utf-8"
 
 [[headers]]
   for = "/admin/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/client/*"
   [headers.values]
     Cache-Control = "no-cache"
