@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jidhe-v3';
+const CACHE_NAME = 'jidhe-v4';
 const ASSETS = [
     './',
     './index.html',
@@ -33,6 +33,9 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
     const url = new URL(e.request.url);
+    if (url.pathname.includes('/admin/') || url.pathname.includes('/client/')) {
+        return;
+    }
     if (url.origin.includes('googleapis.com') || url.origin.includes('gstatic.com') ||
         url.origin.includes('unpkg.com') || url.origin.includes('cdnjs.cloudflare.com')) {
         return;

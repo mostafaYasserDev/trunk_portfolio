@@ -30,50 +30,78 @@
         </form>
     </div>
 
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+                regs.forEach(function (r) { r.unregister(); });
+            });
+        }
+    </script>
     <script type="module">
-        import { auth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from '../firebase/firebase.js';
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) window.location.href = 'dashboard.html';
-        });
-
-        const loginForm = document.getElementById('login-form');
         const errorMessage = document.getElementById('error-message');
-        const emailInput = document.getElementById('email');
-        const pwdInput = document.getElementById('password');
-        const togglePwd = document.getElementById('toggle-pwd');
 
-        togglePwd.addEventListener('click', () => {
-            const isPass = pwdInput.type === 'password';
-            pwdInput.type = isPass ? 'text' : 'password';
-            togglePwd.textContent = isPass ? '🙈' : '👁';
-        });
+        function showAuthError(error) {
+            console.error(error);
+            const code = error?.code || '';
+            const messages = {
+                'auth/unauthorized-domain': 'نطاق الموقع غير مسموح في Firebase. أضف نطاق Netlify أو GitHub Pages في Firebase Console → Authentication → Settings → Authorized domains.',
+                'auth/invalid-credential': 'بيانات الدخول غير صحيحة.',
+                'auth/wrong-password': 'بيانات الدخول غير صحيحة.',
+                'auth/user-not-found': 'بيانات الدخول غير صحيحة.',
+                'auth/too-many-requests': 'محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً.',
+                'auth/network-request-failed': 'مشكلة في الاتصال. تحقق من الإنترنت وحاول مجدداً.'
+            };
+            errorMessage.textContent = messages[code] || 'تعذر تسجيل الدخول. حاول مجدداً.';
+            errorMessage.style.color = '';
+        }
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try {
-                await signInWithEmailAndPassword(auth, emailInput.value, pwdInput.value);
-            } catch (error) {
-                errorMessage.textContent = 'بيانات الدخول غير صحيحة.';
-                errorMessage.style.color = '';
-            }
-        });
+        try {
+            const { auth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } =
+                await import('../firebase/firebase.js');
 
-        document.getElementById('forgot-password').addEventListener('click', async () => {
-            const email = emailInput.value;
-            if (!email) {
-                errorMessage.textContent = 'أدخل بريدك الإلكتروني أولاً.';
-                return;
-            }
-            try {
-                await sendPasswordResetEmail(auth, email);
-                errorMessage.textContent = 'تم إرسال رابط إعادة التعيين.';
-                errorMessage.style.color = 'var(--success)';
-            } catch (error) {
-                errorMessage.textContent = 'حدث خطأ. تأكد من صحة البريد.';
-                errorMessage.style.color = '';
-            }
-        });
+            onAuthStateChanged(auth, (user) => {
+                if (user) window.location.href = 'dashboard.html';
+            });
+
+            const loginForm = document.getElementById('login-form');
+            const emailInput = document.getElementById('email');
+            const pwdInput = document.getElementById('password');
+            const togglePwd = document.getElementById('toggle-pwd');
+
+            togglePwd.addEventListener('click', () => {
+                const isPass = pwdInput.type === 'password';
+                pwdInput.type = isPass ? 'text' : 'password';
+                togglePwd.textContent = isPass ? '🙈' : '👁';
+            });
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                errorMessage.textContent = '';
+                try {
+                    await signInWithEmailAndPassword(auth, emailInput.value, pwdInput.value);
+                } catch (error) {
+                    showAuthError(error);
+                }
+            });
+
+            document.getElementById('forgot-password').addEventListener('click', async () => {
+                const email = emailInput.value;
+                if (!email) {
+                    errorMessage.textContent = 'أدخل بريدك الإلكتروني أولاً.';
+                    return;
+                }
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    errorMessage.textContent = 'تم إرسال رابط إعادة التعيين.';
+                    errorMessage.style.color = 'var(--success)';
+                } catch (error) {
+                    showAuthError(error);
+                }
+            });
+        } catch (error) {
+            console.error(error);
+            errorMessage.textContent = 'تعذر تحميل نظام الدخول. امسح كاش المتصفح (Ctrl+Shift+R) ثم أعد المحاولة.';
+        }
     </script>
 </body>
 </html>

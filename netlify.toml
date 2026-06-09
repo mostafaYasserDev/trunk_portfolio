@@ -1,0 +1,33 @@
+# إعدادات Netlify — موقع جذع
+# الموقع يستخدم hash routing (#home) ولا يحتاج إعادة توجيه SPA شاملة
+
+[build]
+  publish = "."
+
+# ضمان وصول لوحة التحكم كملفات ثابتة (لا تُحوَّل إلى index.html)
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/client/*"
+  to = "/client/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin/login.html"
+  status = 302
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    Cache-Control = "no-cache"

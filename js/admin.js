@@ -2,6 +2,11 @@
  * Admin panel — mobile sidebar + shared UI
  */
 (function initAdminPanel() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+            regs.forEach((r) => r.unregister());
+        }).catch(() => {});
+    }
     const sidebar = document.querySelector('.sidebar');
     if (!sidebar) return;
 
