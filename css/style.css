@@ -98,6 +98,7 @@ body {
   direction: rtl;
   font-size: 18px;
   transition: background-color 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
 }
 
 /* Typography */
@@ -557,7 +558,7 @@ body:not(.aos-init) [data-aos] {
 /* Interactive Grid & Cards */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 35px;
   margin-bottom: 50px;
 }
@@ -714,11 +715,11 @@ body:not(.aos-init) [data-aos] {
 }
 .contact-info {
   flex: 1;
-  min-width: 300px;
+  min-width: 0;
 }
 .contact-form {
   flex: 1;
-  min-width: 300px;
+  min-width: 0;
   background-color: var(--white);
   padding: 40px;
   border-radius: 20px;

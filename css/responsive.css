@@ -10,7 +10,7 @@
   --header-height: auto;
 }
 
-html {
+html, body {
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
 }
@@ -139,6 +139,7 @@ body {
 
   .container {
     padding: 0 16px;
+    max-width: 100%;
   }
 
   /* Header: grid layout */
