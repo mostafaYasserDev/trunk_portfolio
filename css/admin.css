@@ -708,6 +708,32 @@ tbody tr:hover {
   font-size: 0.9rem;
 }
 
+/* Quill editor — مقالات */
+#editor-container {
+  min-height: 260px;
+  background: var(--admin-surface);
+  border-radius: 0 0 10px 10px;
+}
+
+.ql-toolbar.ql-snow {
+  border-radius: 10px 10px 0 0;
+  border-color: var(--admin-border);
+  background: var(--admin-bg);
+  font-family: inherit;
+}
+
+.ql-container.ql-snow {
+  border-color: var(--admin-border);
+  border-radius: 0 0 10px 10px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.ql-editor {
+  min-height: 220px;
+  line-height: 1.9;
+}
+
 .social-link-row {
   border: 1px solid var(--admin-border);
   border-radius: 12px;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jidhe-v7';
+const CACHE_NAME = 'jidhe-v8';
 const ASSETS = [
     './',
     './index.html',
@@ -13,7 +13,8 @@ const ASSETS = [
     './js/ui.js',
     './firebase/public.js',
     './assets/logo.png',
-    './manifest.json',
+    './vendor/quill/quill.min.js',
+    './vendor/quill/quill.snow.css',
     './otf/thmanyahseriftext-Regular.otf',
     './otf/thmanyahseriftext-Bold.otf',
     './otf/thmanyahseriftext-Medium.otf',

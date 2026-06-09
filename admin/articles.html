@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>إدارة المقالات - جذع</title>
     <link rel="stylesheet" href="../css/admin.css">
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link rel="stylesheet" href="../vendor/quill/quill.snow.css">
 </head>
 <body>
 
@@ -76,7 +76,7 @@
     </main>
 
     <script src="../js/admin.js"></script>
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script src="../vendor/quill/quill.min.js"></script>
 
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
@@ -88,7 +88,11 @@
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
         // Initialize Quill Editor
-        var quill = new Quill('#editor-container', {
+        if (typeof Quill === 'undefined') {
+            document.getElementById('form-msg').textContent = 'تعذر تحميل محرر النصوص. حدّث الصفحة أو امسح الكاش.';
+            document.getElementById('form-msg').className = 'msg error';
+        }
+        var quill = typeof Quill !== 'undefined' ? new Quill('#editor-container', {
             theme: 'snow',
             placeholder: 'اكتب مقالك الرائع هنا...',
             modules: {
@@ -100,7 +104,7 @@
                     ['clean']
                 ]
             }
-        });
+        }) : null;
 
         // Form elements
         const form = document.getElementById('article-form');
@@ -190,6 +194,7 @@
             idInput.value = id;
             titleInput.value = data.title;
             descInput.value = data.shortDescription;
+            if (!quill) return;
             quill.root.innerHTML = data.content; // Load HTML into Quill
             currentEditingImageUrl = data.coverImage;
             
@@ -203,7 +208,7 @@
             form.reset();
             idInput.value = '';
             currentEditingImageUrl = '';
-            quill.root.innerHTML = '';
+            if (quill) quill.root.innerHTML = '';
             formTitle.textContent = 'إضافة مقال جديد';
             submitBtn.textContent = 'حفظ المقال';
             cancelBtn.style.display = 'none';
@@ -219,6 +224,11 @@
             e.preventDefault();
             
             // Get HTML content from Quill
+            if (!quill) {
+                msgDiv.textContent = 'محرر النصوص غير متاح.';
+                msgDiv.className = 'msg error';
+                return;
+            }
             const htmlContent = quill.root.innerHTML;
             if (htmlContent === '<p><br></p>') {
                 msgDiv.textContent = 'المحتوى لا يمكن أن يكون فارغاً.';
