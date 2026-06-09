@@ -1,16 +1,51 @@
-import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc, startAfter } from '../firebase/firebase.js';
+import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc, startAfter } from '../firebase/public.js';
 import {
     LOADER_HTML, skeletonCards, skeletonReviews, emptyState, showError, buildContactHtml,
     escapeHtml, updatePageMeta, PAGE_META, initReadingProgress, removeReadingProgress
 } from './helpers.js';
 
 const appRoot = document.getElementById('app-root');
+const REVIEWS_LIMIT = 8;
+let contactRequest = null;
+let homeDataLoading = false;
+let aosRefreshed = false;
 
-// Footer contact — load once
-getDoc(doc(db, 'settings', 'contact')).then(snap => {
-    const el = document.getElementById('footer-contact-info');
-    if (!el) return;
-    el.innerHTML = snap.exists() ? buildContactHtml(snap.data()) : '<p>معلومات التواصل غير متوفرة.</p>';
+function isHomePath(path) {
+    return path === 'home' || path === '' || path === 'contact';
+}
+
+function getHomeShellHtml() {
+    const tpl = document.getElementById('home-shell');
+    return tpl ? tpl.innerHTML : '';
+}
+
+function refreshAosOnce() {
+    if (aosRefreshed || typeof AOS === 'undefined') return;
+    aosRefreshed = true;
+    requestAnimationFrame(() => AOS.refreshHard());
+}
+
+function fetchContactSettings() {
+    if (!contactRequest) {
+        contactRequest = getDoc(doc(db, 'settings', 'contact'));
+    }
+    return contactRequest;
+}
+
+function applyContactHtml(html) {
+    const footerEl = document.getElementById('footer-contact-info');
+    if (footerEl) footerEl.innerHTML = html;
+    const contactEl = document.getElementById('dynamic-contact-info');
+    if (contactEl) contactEl.innerHTML = html;
+}
+
+function applyContactSnap(snap) {
+    const html = snap.exists() ? buildContactHtml(snap.data()) : '<p>معلومات التواصل غير متوفرة.</p>';
+    applyContactHtml(html);
+}
+
+fetchContactSettings().then(applyContactSnap).catch(() => {
+    applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>');
 });
 
 const routes = {
@@ -36,12 +71,11 @@ function updateActiveNav(path) {
 async function router() {
     const hash = window.location.hash.slice(1) || 'home';
     const [path, id] = hash.split('?id=');
-    const isHome = path === 'home' || path === '' || path === 'contact';
+    const isHome = isHomePath(path);
 
     removeReadingProgress();
     updateActiveNav(path);
 
-    // تواصل معي: إذا الرئيسية معروضة، فقط مرّر للقسم
     if (path === 'contact' && document.getElementById('home-view')) {
         updatePageMeta(PAGE_META.contact);
         setTimeout(() => {
@@ -51,6 +85,7 @@ async function router() {
     }
 
     if (!isHome) {
+        aosRefreshed = false;
         appRoot.innerHTML = LOADER_HTML;
         window.scrollTo({ top: 0 });
     }
@@ -68,7 +103,7 @@ async function router() {
     }
 
     if (isHome) {
-        setTimeout(() => { if (typeof AOS !== 'undefined') AOS.refreshHard(); }, 80);
+        setTimeout(refreshAosOnce, 60);
         if (path === 'contact') {
             setTimeout(() => document.getElementById('contact-sec')?.scrollIntoView({ behavior: 'smooth' }), 120);
         }
@@ -81,220 +116,186 @@ async function renderContact() {
 
 function renderServiceCard(data, id, compact = true) {
     const btnCls = compact ? 'btn btn-sm-card' : 'btn';
-    return `<div class="card"><div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.description)}</p><a href="#service?id=${id}" class="${btnCls}">تفاصيل الخدمة</a></div></div>`;
+    return `<div class="card content-in"><div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.description)}</p><a href="#service?id=${id}" class="${btnCls}">تفاصيل الخدمة</a></div></div>`;
 }
 
 function renderProjectCard(data, id) {
-    return `<div class="card">${data.mainImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.mainImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#project?id=${id}" class="btn">عرض المشروع</a></div></div>`;
+    return `<div class="card content-in">${data.mainImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.mainImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#project?id=${id}" class="btn">عرض المشروع</a></div></div>`;
 }
 
 function renderArticleCard(data, id) {
-    return `<div class="card">${data.coverImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.coverImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#article?id=${id}" class="btn">اقرأ المزيد</a></div></div>`;
+    return `<div class="card content-in">${data.coverImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.coverImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#article?id=${id}" class="btn">اقرأ المزيد</a></div></div>`;
 }
 
 function renderReviewCard(data) {
     const serviceLine = data.serviceName ? `<span class="review-service">${escapeHtml(data.serviceName)}</span>` : '';
-    return `<div class="review-card">${serviceLine}<h4>${escapeHtml(data.clientName)}</h4><p>"${escapeHtml(data.reviewText)}"</p></div>`;
+    return `<div class="review-card content-in">${serviceLine}<h4>${escapeHtml(data.clientName)}</h4><p>"${escapeHtml(data.reviewText)}"</p></div>`;
 }
 
-async function loadHomeData() {
-    try {
-        const [generalSnap, servicesSnap, projectsSnap, articlesSnap, reviewsSnap, contactSnap] = await Promise.all([
-            getDoc(doc(db, 'settings', 'general')),
-            getDocs(query(collection(db, 'services'), where('featured', '==', true), limit(3))),
-            getDocs(query(collection(db, 'projects'), where('featured', '==', true), limit(3))),
-            getDocs(query(collection(db, 'articles'), orderBy('publishDate', 'desc'), limit(3))),
-            getDocs(query(collection(db, 'reviews'), where('visible', '==', true))),
-            getDoc(doc(db, 'settings', 'contact'))
-        ]);
-
-        if (generalSnap.exists()) {
-            const data = generalSnap.data();
-            const cvBtn = document.getElementById('cv-download-btn');
-            if (cvBtn) {
-                if (data.cvData) { cvBtn.href = data.cvData; cvBtn.style.display = 'inline-flex'; }
-                else cvBtn.style.display = 'none';
-            }
-            const aboutContainer = document.getElementById('about-image-container');
-            if (aboutContainer && data.aboutImage) {
-                aboutContainer.innerHTML = `<img src="${data.aboutImage}" alt="صورة شخصية" class="about-image" loading="lazy">`;
-            }
-        }
-
-        const servicesEl = document.getElementById('services-grid');
-        if (servicesEl) {
-            if (servicesSnap.empty) servicesEl.innerHTML = emptyState('services');
-            else {
-                let html = '';
-                servicesSnap.forEach(d => { html += renderServiceCard(d.data(), d.id); });
-                servicesEl.innerHTML = html;
-            }
-        }
-
-        const projectsEl = document.getElementById('projects-grid');
-        if (projectsEl) {
-            if (projectsSnap.empty) projectsEl.innerHTML = emptyState('projects');
-            else {
-                let html = '';
-                projectsSnap.forEach(d => { html += renderProjectCard(d.data(), d.id); });
-                projectsEl.innerHTML = html;
-            }
-        }
-
-        const articlesEl = document.getElementById('articles-grid');
-        if (articlesEl) {
-            if (articlesSnap.empty) articlesEl.innerHTML = emptyState('articles');
-            else {
-                let html = '';
-                articlesSnap.forEach(d => { html += renderArticleCard(d.data(), d.id); });
-                articlesEl.innerHTML = html;
-            }
-        }
-
-        const reviewsEl = document.getElementById('reviews-grid');
-        if (reviewsEl) {
-            if (reviewsSnap.empty) reviewsEl.innerHTML = emptyState('reviews');
-            else {
-                let html = '';
-                reviewsSnap.forEach(d => { html += renderReviewCard(d.data()); });
-                reviewsEl.innerHTML = html;
-            }
-        }
-
-        const contactEl = document.getElementById('dynamic-contact-info');
-        if (contactEl) {
-            contactEl.innerHTML = contactSnap.exists() ? buildContactHtml(contactSnap.data()) : '<p>معلومات التواصل غير متوفرة.</p>';
-        }
-    } catch (e) {
-        console.error(e);
+function fillQueryGrid(elId, snap, renderFn, emptyType) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (snap.empty) {
+        el.innerHTML = emptyState(emptyType);
+        return;
     }
+    let html = '';
+    snap.forEach(d => { html += renderFn(d.data(), d.id); });
+    el.innerHTML = html;
+}
+
+function fillReviewsGrid(snap) {
+    const el = document.getElementById('reviews-grid');
+    if (!el) return;
+    if (snap.empty) {
+        el.innerHTML = emptyState('reviews');
+        return;
+    }
+    let html = '';
+    snap.forEach(d => { html += renderReviewCard(d.data()); });
+    el.innerHTML = html;
+}
+
+function applyGeneralSettings(snap) {
+    if (!snap.exists()) return;
+    const data = snap.data();
+    const cvBtn = document.getElementById('cv-download-btn');
+    if (cvBtn) {
+        if (data.cvData) {
+            cvBtn.href = data.cvData;
+            cvBtn.style.display = 'inline-flex';
+        } else {
+            cvBtn.style.display = 'none';
+        }
+    }
+    const aboutContainer = document.getElementById('about-image-container');
+    if (aboutContainer && data.aboutImage) {
+        aboutContainer.innerHTML = `<img src="${data.aboutImage}" alt="صورة شخصية" class="about-image content-in" loading="lazy" decoding="async">`;
+    }
+}
+
+let generalSettingsLoaded = false;
+
+function loadGeneralSettingsDeferred() {
+    const aboutSection = document.querySelector('.about-section');
+    if (!aboutSection) return;
+
+    const load = () => {
+        if (generalSettingsLoaded) return;
+        generalSettingsLoaded = true;
+        getDoc(doc(db, 'settings', 'general'))
+            .then(applyGeneralSettings)
+            .catch(() => {});
+    };
+
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some(e => e.isIntersecting)) {
+                observer.disconnect();
+                load();
+            }
+        }, { rootMargin: '200px' });
+        observer.observe(aboutSection);
+        setTimeout(load, 5000);
+    } else {
+        setTimeout(load, 300);
+    }
+}
+
+function loadHomeData() {
+    if (homeDataLoading) return;
+    homeDataLoading = true;
+
+    fetchContactSettings().then(applyContactSnap).catch(() => {});
+
+    const servicesQ = getDocs(query(collection(db, 'services'), where('featured', '==', true), limit(3)));
+    const projectsQ = getDocs(query(collection(db, 'projects'), where('featured', '==', true), limit(3)));
+    const articlesQ = getDocs(query(collection(db, 'articles'), orderBy('publishDate', 'desc'), limit(3)));
+    const reviewsQ = getDocs(query(collection(db, 'reviews'), where('visible', '==', true), limit(REVIEWS_LIMIT)));
+
+    servicesQ
+        .then(snap => fillQueryGrid('services-grid', snap, renderServiceCard, 'services'))
+        .catch(() => {
+            const el = document.getElementById('services-grid');
+            if (el) el.innerHTML = showError('تعذر تحميل الخدمات.');
+        });
+
+    projectsQ
+        .then(snap => fillQueryGrid('projects-grid', snap, renderProjectCard, 'projects'))
+        .catch(() => {
+            const el = document.getElementById('projects-grid');
+            if (el) el.innerHTML = showError('تعذر تحميل المشاريع.');
+        });
+
+    articlesQ
+        .then(snap => fillQueryGrid('articles-grid', snap, renderArticleCard, 'articles'))
+        .catch(() => {
+            const el = document.getElementById('articles-grid');
+            if (el) el.innerHTML = showError('تعذر تحميل المقالات.');
+        });
+
+    reviewsQ
+        .then(fillReviewsGrid)
+        .catch(() => {
+            const el = document.getElementById('reviews-grid');
+            if (el) el.innerHTML = showError('تعذر تحميل الآراء.');
+        });
+
+    loadGeneralSettingsDeferred();
+
+    Promise.allSettled([servicesQ, projectsQ, articlesQ, reviewsQ]).then(() => {
+        homeDataLoading = false;
+        refreshAosOnce();
+    });
+}
+
+function bindHomeContactForm() {
+    const contactForm = document.getElementById('public-contact-form');
+    if (!contactForm || contactForm.dataset.bound === '1') return;
+    contactForm.dataset.bound = '1';
+
+    contactForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = contactForm.querySelector('button[type="submit"]');
+        const statusEl = document.getElementById('form-status');
+        btn.disabled = true;
+        btn.textContent = 'جاري الإرسال...';
+        statusEl.className = 'form-status';
+        statusEl.style.display = 'none';
+        try {
+            const { addDoc } = await import('../firebase/public.js');
+            await addDoc(collection(db, 'messages'), {
+                name: document.getElementById('contact-name').value,
+                email: document.getElementById('contact-email-input').value,
+                message: document.getElementById('contact-message').value,
+                date: new Date().toISOString(),
+                read: false
+            });
+            contactForm.reset();
+            statusEl.textContent = 'تم إرسال رسالتك بنجاح! سأتواصل معك قريباً.';
+            statusEl.className = 'form-status success';
+        } catch (err) {
+            console.error(err);
+            statusEl.textContent = 'حدث خطأ أثناء الإرسال. حاول مجدداً.';
+            statusEl.className = 'form-status error';
+        } finally {
+            btn.textContent = 'إرسال الرسالة';
+            btn.disabled = false;
+        }
+    });
 }
 
 async function renderHome() {
     updatePageMeta(PAGE_META.home);
 
-    appRoot.innerHTML = `
-        <div class="view active" id="home-view">
-            <section class="hero glass-panel" data-aos="zoom-in">
-                <div class="hero-content">
-                    <span class="trunk-badge">مرحباً بك في جذع</span>
-                    <h1>أروي حكايات برمجية</h1>
-                    <p>تتأصل الأفكار وتنمو كالأشجار. أقدم حلولاً برمجية بروح فنية ولمسة إبداعية تجمع بين أصالة الجذور وجمال الأغصان.</p>
-                    <div class="hero-btns">
-                        <a href="#projects" class="btn">استكشف أعمالي</a>
-                        <a id="cv-download-btn" href="#" class="btn btn-outline" style="display:none;" download="سيرة-ذاتية.pdf">
-                            <i class="fas fa-file-download"></i> تحميل السيرة الذاتية
-                        </a>
-                    </div>
-                </div>
-            </section>
-
-            <section class="about-section" data-aos="fade-up">
-                <h2 class="section-title">من أنا؟ (نبذة عني)</h2>
-                <div class="glass-panel about-grid" style="padding: 40px; border-radius: 20px;">
-                    <div id="about-image-container">
-                        <div class="about-image-placeholder">🌳</div>
-                    </div>
-                    <div class="about-text">
-                        <p>مرحباً! أنا مطور واجهات ومصمم تجربة مستخدم شغوف ببناء مواقع وتطبيقات ويب سريعة ومميزة. أؤمن بأن البرمجة كالشجرة؛ تبدأ ببذرة (الفكرة)، وتمتد جذورها (الكود الأساسي)، ثم تتفرع أغصانها (الواجهة) لتثمر في النهاية تجربة مستخدم رائعة.</p>
-                        <p>أسعى دائماً لتقديم حلول تقنية تجمع بين الأداء العالي والتصميم الجذاب، مع التركيز على كتابة كود نظيف وقابل للتطوير.</p>
-                    </div>
-                </div>
-            </section>
-
-            <section data-aos="fade-up">
-                <div class="section-header">
-                    <h2 class="section-title">أبرز الخدمات</h2>
-                    <a href="#services" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
-                </div>
-                <div class="grid" id="services-grid">${skeletonCards(3)}</div>
-            </section>
-
-            <section data-aos="fade-up">
-                <div class="section-header">
-                    <h2 class="section-title">أبرز المشاريع</h2>
-                    <a href="#projects" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
-                </div>
-                <div class="grid" id="projects-grid">${skeletonCards(3)}</div>
-            </section>
-
-            <section data-aos="fade-up">
-                <div class="section-header">
-                    <h2 class="section-title">أحدث المقالات</h2>
-                    <a href="#articles" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
-                </div>
-                <div class="grid" id="articles-grid">${skeletonCards(3)}</div>
-            </section>
-
-            <section class="reviews-section" data-aos="fade-up">
-                <h2 class="section-title" style="color:var(--text-main);">ماذا قالوا عن جذع؟</h2>
-                <p class="reviews-scroll-hint"><i class="fas fa-hand-pointer"></i> اسحب للمزيد من الآراء</p>
-                <div class="reviews-grid" id="reviews-grid">${skeletonReviews(2)}</div>
-                <p class="reviews-cta">هل عملنا معاً؟ <a href="client/write-review.html">شاركنا رأيك</a></p>
-            </section>
-
-            <section id="contact-sec" class="contact-section" data-aos="fade-up">
-                <div class="contact-info">
-                    <h2 class="section-title">لنصنع حكاية جديدة</h2>
-                    <p>تواصل معي لنبدأ مشروعك القادم ونروي معاً قصة نجاح.</p>
-                    <div id="dynamic-contact-info"><div class="skeleton-line" style="height:20px; width:60%;"></div></div>
-                </div>
-                <div class="contact-form">
-                    <div id="form-status" class="form-status" role="alert"></div>
-                    <form id="public-contact-form">
-                        <div class="form-group">
-                            <label for="contact-name">الاسم</label>
-                            <input type="text" id="contact-name" placeholder="اسمك الكريم" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="contact-email-input">البريد الإلكتروني</label>
-                            <input type="email" id="contact-email-input" placeholder="example@email.com" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="contact-message">رسالتك</label>
-                            <textarea id="contact-message" rows="4" placeholder="اكتب رسالتك هنا..." required></textarea>
-                        </div>
-                        <button type="submit" class="btn" style="width: 100%;">إرسال الرسالة</button>
-                    </form>
-                </div>
-            </section>
-        </div>
-    `;
-
-    const contactForm = document.getElementById('public-contact-form');
-    if (contactForm) {
-        contactForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = contactForm.querySelector('button[type="submit"]');
-            const statusEl = document.getElementById('form-status');
-            btn.disabled = true;
-            btn.textContent = 'جاري الإرسال...';
-            statusEl.className = 'form-status';
-            statusEl.style.display = 'none';
-            try {
-                const { addDoc } = await import('../firebase/firebase.js');
-                await addDoc(collection(db, 'messages'), {
-                    name: document.getElementById('contact-name').value,
-                    email: document.getElementById('contact-email-input').value,
-                    message: document.getElementById('contact-message').value,
-                    date: new Date().toISOString(),
-                    read: false
-                });
-                contactForm.reset();
-                statusEl.textContent = 'تم إرسال رسالتك بنجاح! سأتواصل معك قريباً.';
-                statusEl.className = 'form-status success';
-            } catch (err) {
-                console.error(err);
-                statusEl.textContent = 'حدث خطأ أثناء الإرسال. حاول مجدداً.';
-                statusEl.className = 'form-status error';
-            } finally {
-                btn.textContent = 'إرسال الرسالة';
-                btn.disabled = false;
-            }
-        });
+    if (!document.getElementById('home-view')) {
+        appRoot.innerHTML = getHomeShellHtml();
+        bindHomeContactForm();
+    } else {
+        bindHomeContactForm();
     }
 
-    await loadHomeData();
+    loadHomeData();
 }
 
 async function renderServices() {
@@ -395,7 +396,7 @@ async function renderProjectDetail(id) {
                         <h1>${escapeHtml(data.title)}</h1>
                         <div class="detail-meta"><span>التقنيات: ${escapeHtml(data.technologies)}</span></div>
                     </div>
-                    ${data.mainImage ? `<img src="${escapeHtml(data.mainImage)}" class="detail-cover" alt="${escapeHtml(data.title)}">` : ''}
+                    ${data.mainImage ? `<img src="${escapeHtml(data.mainImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
                     <div class="detail-content">
                         <p>${escapeHtml(data.fullDescription).replace(/\n/g, '<br>')}</p>
                         <div style="margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
@@ -426,7 +427,7 @@ async function renderArticleDetail(id) {
                         <h1>${escapeHtml(data.title)}</h1>
                         <div class="detail-meta"><span>نُشر في: ${escapeHtml(data.publishDate)}</span></div>
                     </div>
-                    ${data.coverImage ? `<img src="${escapeHtml(data.coverImage)}" class="detail-cover" alt="${escapeHtml(data.title)}">` : ''}
+                    ${data.coverImage ? `<img src="${escapeHtml(data.coverImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
                     <div class="detail-content">${data.content}</div>
                     <div style="text-align: center; margin-top: 40px;">
                         <a href="#articles" class="btn" style="background:var(--text-muted);">العودة للمقالات</a>
@@ -467,5 +468,18 @@ async function renderServiceDetail(id) {
     } catch (e) { appRoot.innerHTML = showError('خطأ في تحميل الخدمة.'); }
 }
 
+function bootRouter() {
+    router();
+}
+
 window.addEventListener('hashchange', router);
-document.addEventListener('DOMContentLoaded', router);
+const initialPath = (window.location.hash.slice(1) || 'home').split('?id=')[0];
+if (isHomePath(initialPath)) {
+    queueMicrotask(loadHomeData);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootRouter);
+} else {
+    bootRouter();
+}

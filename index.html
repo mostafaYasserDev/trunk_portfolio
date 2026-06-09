@@ -18,10 +18,18 @@
     <link rel="icon" href="assets/logo.png" type="image/png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#8C5A35">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/responsive.css">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+    <link rel="modulepreload" href="firebase/public.js">
+    <link rel="modulepreload" href="js/helpers.js">
+    <link rel="modulepreload" href="js/app.js">
 </head>
 
 <body>
@@ -51,7 +59,117 @@
             </div>
         </header>
 
+        <template id="home-shell">
+            <div class="view active" id="home-view">
+                <section class="hero glass-panel">
+                    <div class="hero-content">
+                        <span class="trunk-badge">مرحباً بك في جذع</span>
+                        <h1>أروي حكايات برمجية</h1>
+                        <p>تتأصل الأفكار وتنمو كالأشجار. أقدم حلولاً برمجية بروح فنية ولمسة إبداعية تجمع بين أصالة الجذور وجمال الأغصان.</p>
+                        <div class="hero-btns">
+                            <a href="#projects" class="btn">استكشف أعمالي</a>
+                            <a id="cv-download-btn" href="#" class="btn btn-outline" style="display:none;" download="سيرة-ذاتية.pdf">
+                                <i class="fas fa-file-download"></i> تحميل السيرة الذاتية
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="about-section" data-aos="fade-up">
+                    <h2 class="section-title">من أنا؟ (نبذة عني)</h2>
+                    <div class="glass-panel about-grid" style="padding: 40px; border-radius: 20px;">
+                        <div id="about-image-container">
+                            <div class="about-image-placeholder">🌳</div>
+                        </div>
+                        <div class="about-text">
+                            <p>مرحباً! أنا مطور واجهات ومصمم تجربة مستخدم شغوف ببناء مواقع وتطبيقات ويب سريعة ومميزة. أؤمن بأن البرمجة كالشجرة؛ تبدأ ببذرة (الفكرة)، وتمتد جذورها (الكود الأساسي)، ثم تتفرع أغصانها (الواجهة) لتثمر في النهاية تجربة مستخدم رائعة.</p>
+                            <p>أسعى دائماً لتقديم حلول تقنية تجمع بين الأداء العالي والتصميم الجذاب، مع التركيز على كتابة كود نظيف وقابل للتطوير.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section data-aos="fade-up">
+                    <div class="section-header">
+                        <h2 class="section-title">أبرز الخدمات</h2>
+                        <a href="#services" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
+                    </div>
+                    <div class="grid" id="services-grid">
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                    </div>
+                </section>
+
+                <section data-aos="fade-up">
+                    <div class="section-header">
+                        <h2 class="section-title">أبرز المشاريع</h2>
+                        <a href="#projects" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
+                    </div>
+                    <div class="grid" id="projects-grid">
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                    </div>
+                </section>
+
+                <section data-aos="fade-up">
+                    <div class="section-header">
+                        <h2 class="section-title">أحدث المقالات</h2>
+                        <a href="#articles" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
+                    </div>
+                    <div class="grid" id="articles-grid">
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                    </div>
+                </section>
+
+                <section class="reviews-section" data-aos="fade-up">
+                    <h2 class="section-title" style="color:var(--text-main);">ماذا قالوا عن جذع؟</h2>
+                    <p class="reviews-scroll-hint"><i class="fas fa-hand-pointer"></i> اسحب للمزيد من الآراء</p>
+                    <div class="reviews-grid" id="reviews-grid">
+                        <div class="skeleton-card review-skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                        <div class="skeleton-card review-skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                    </div>
+                    <p class="reviews-cta">هل عملنا معاً؟ <a href="client/write-review.html">شاركنا رأيك</a></p>
+                </section>
+
+                <section id="contact-sec" class="contact-section" data-aos="fade-up">
+                    <div class="contact-info">
+                        <h2 class="section-title">لنصنع حكاية جديدة</h2>
+                        <p>تواصل معي لنبدأ مشروعك القادم ونروي معاً قصة نجاح.</p>
+                        <div id="dynamic-contact-info"><div class="skeleton-line" style="height:20px; width:60%;"></div></div>
+                    </div>
+                    <div class="contact-form">
+                        <div id="form-status" class="form-status" role="alert"></div>
+                        <form id="public-contact-form">
+                            <div class="form-group">
+                                <label for="contact-name">الاسم</label>
+                                <input type="text" id="contact-name" placeholder="اسمك الكريم" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="contact-email-input">البريد الإلكتروني</label>
+                                <input type="email" id="contact-email-input" placeholder="example@email.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="contact-message">رسالتك</label>
+                                <textarea id="contact-message" rows="4" placeholder="اكتب رسالتك هنا..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn" style="width: 100%;">إرسال الرسالة</button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </template>
+
         <main id="app-root"></main>
+        <script>
+            (function () {
+                var tpl = document.getElementById('home-shell');
+                var root = document.getElementById('app-root');
+                if (tpl && root) root.innerHTML = tpl.innerHTML;
+            })();
+        </script>
 
         <footer class="site-footer">
             <div class="footer-grid">
@@ -88,7 +206,7 @@
         <i class="fas fa-arrow-up"></i>
     </button>
 
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js" defer></script>
     <script type="module">
         import { initUI } from './js/ui.js';
         initUI();

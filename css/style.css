@@ -3,6 +3,7 @@
   src: url('../otf/thmanyahseriftext-Regular.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -10,6 +11,7 @@
   src: url('../otf/thmanyahseriftext-Medium.otf') format('opentype');
   font-weight: 500;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -17,6 +19,7 @@
   src: url('../otf/thmanyahseriftext-Bold.otf') format('opentype');
   font-weight: bold;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -24,6 +27,7 @@
   src: url('../otf/thmanyahseriftext-Black.otf') format('opentype');
   font-weight: 900;
   font-style: normal;
+  font-display: swap;
 }
 
 :root {
@@ -449,6 +453,12 @@ footer,
   height: 5px;
   background: linear-gradient(to left, var(--primary), var(--accent-dark));
   border-radius: 5px;
+}
+
+/* Keep content visible until AOS initializes */
+body:not(.aos-init) [data-aos] {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 /* SPA Views */
@@ -1027,6 +1037,21 @@ body.dark-mode .reviews-section {
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
+}
+
+.content-in {
+  animation: contentIn 0.4s ease-out both;
+}
+
+@keyframes contentIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Empty states */

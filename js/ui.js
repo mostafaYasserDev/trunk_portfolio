@@ -1,10 +1,18 @@
+function initAos() {
+    if (typeof AOS === 'undefined') return;
+    AOS.init({ duration: 800, once: true, offset: 100 });
+    document.body.classList.add('aos-init');
+}
+
 export function initUI() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
 
     if (typeof AOS !== 'undefined') {
-        AOS.init({ duration: 800, once: true, offset: 100 });
+        initAos();
+    } else {
+        window.addEventListener('load', initAos, { once: true });
     }
 
     const bttBtn = document.getElementById('back-to-top');
