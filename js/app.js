@@ -1,10 +1,34 @@
-import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc, startAfter } from '../firebase/public.js';
+import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc, startAfter, getDocsFromServer, getDocFromServer } from '../firebase/public.js';
 import {
     LOADER_HTML, skeletonCards, skeletonReviews, emptyState, showError, buildContactHtml,
     escapeHtml, updatePageMeta, PAGE_META, initReadingProgress, removeReadingProgress, buildAboutHtml
 } from './helpers.js';
 import { bindSocialModals } from './social-modal.js';
 import { createSpamGuard, sanitizeText, isValidEmail } from './spam-guard.js';
+
+async function fetchDocsReliably(q) {
+    try {
+        let snap = await getDocs(q);
+        if (snap.empty && snap.metadata && snap.metadata.fromCache) {
+            snap = await getDocsFromServer(q);
+        }
+        return snap;
+    } catch (e) {
+        throw e;
+    }
+}
+
+async function fetchDocReliably(ref) {
+    try {
+        let snap = await getDoc(ref);
+        if (!snap.exists() && snap.metadata && snap.metadata.fromCache) {
+            snap = await getDocFromServer(ref);
+        }
+        return snap;
+    } catch (e) {
+        throw e;
+    }
+}
 
 const appRoot = document.getElementById('app-root');
 const REVIEWS_LIMIT = 8;
@@ -29,7 +53,7 @@ function refreshAosOnce() {
 
 function fetchContactSettings() {
     if (!contactRequest) {
-        contactRequest = getDoc(doc(db, 'settings', 'contact'));
+        contactRequest = fetchDocReliably(doc(db, 'settings', 'contact'));
     }
     return contactRequest;
 }
@@ -190,7 +214,7 @@ function loadGeneralSettingsDeferred() {
     const load = () => {
         if (generalSettingsLoaded) return;
         generalSettingsLoaded = true;
-        getDoc(doc(db, 'settings', 'general'))
+        getDocFromServer(doc(db, 'settings', 'general'))
             .then(applyGeneralSettings)
             .catch(() => {});
     };
@@ -215,10 +239,10 @@ function loadHomeData() {
 
     fetchContactSettings().then(applyContactSnap).catch(() => {});
 
-    const servicesQ = getDocs(query(collection(db, 'services'), where('featured', '==', true), limit(3)));
-    const projectsQ = getDocs(query(collection(db, 'projects'), where('featured', '==', true), limit(3)));
-    const articlesQ = getDocs(query(collection(db, 'articles'), orderBy('publishDate', 'desc'), limit(3)));
-    const reviewsQ = getDocs(query(collection(db, 'reviews'), where('visible', '==', true), limit(REVIEWS_LIMIT)));
+    const servicesQ = fetchDocsReliably(query(collection(db, 'services'), where('featured', '==', true), limit(3)));
+    const projectsQ = fetchDocsReliably(query(collection(db, 'projects'), where('featured', '==', true), limit(3)));
+    const articlesQ = fetchDocsReliably(query(collection(db, 'articles'), orderBy('publishDate', 'desc'), limit(3)));
+    const reviewsQ = fetchDocsReliably(query(collection(db, 'reviews'), where('visible', '==', true), limit(REVIEWS_LIMIT)));
 
     servicesQ
         .then(snap => fillQueryGrid('services-grid', snap, renderServiceCard, 'services'))
@@ -345,7 +369,7 @@ async function renderServices() {
         </div>
     `;
     try {
-        const snap = await getDocs(collection(db, 'services'));
+        const snap = await fetchDocsReliably(collection(db, 'services'));
         const grid = document.getElementById('all-services-grid');
         if (!grid) return;
         if (snap.empty) { grid.innerHTML = emptyState('services'); return; }
@@ -401,7 +425,7 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
             if (orderQuery) queries.push(orderQuery);
             if (lastVisible) queries.push(startAfter(lastVisible));
             queries.push(limit(PAGE_SIZE));
-            const snap = await getDocs(query(collection(db, collectionName), ...queries));
+            const snap = await fetchDocsReliably(query(collection(db, collectionName), ...queries));
             if (snap.empty && isFirst) {
                 grid.innerHTML = emptyState(emptyType);
             } else if (!snap.empty) {
@@ -422,7 +446,7 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
 async function renderProjectDetail(id) {
     if (!id) return router();
     try {
-        const docSnap = await getDoc(doc(db, 'projects', id));
+        const docSnap = await fetchDocReliably(doc(db, 'projects', id));
         if (docSnap.exists()) {
             const data = docSnap.data();
             updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.mainImage });
@@ -454,7 +478,7 @@ async function renderProjectDetail(id) {
 async function renderArticleDetail(id) {
     if (!id) return router();
     try {
-        const docSnap = await getDoc(doc(db, 'articles', id));
+        const docSnap = await fetchDocReliably(doc(db, 'articles', id));
         if (docSnap.exists()) {
             const data = docSnap.data();
             updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.coverImage });
@@ -480,7 +504,7 @@ async function renderArticleDetail(id) {
 async function renderServiceDetail(id) {
     if (!id) return router();
     try {
-        const docSnap = await getDoc(doc(db, 'services', id));
+        const docSnap = await fetchDocReliably(doc(db, 'services', id));
         if (docSnap.exists()) {
             const data = docSnap.data();
             updatePageMeta({ title: `${data.title} - جذع`, description: data.description || data.title });

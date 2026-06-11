@@ -12,7 +12,9 @@ import {
     where,
     orderBy,
     limit,
-    startAfter
+    startAfter,
+    getDocsFromServer,
+    getDocFromServer
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -42,5 +44,7 @@ export {
     where,
     orderBy,
     limit,
-    startAfter
+    startAfter,
+    getDocsFromServer,
+    getDocFromServer
 };
