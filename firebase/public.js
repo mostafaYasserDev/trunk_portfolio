@@ -1,8 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import {
-    initializeFirestore,
-    persistentLocalCache,
-    persistentSingleTabManager,
+    getFirestore,
+    enableIndexedDbPersistence,
     collection,
     getDocs,
     getDoc,
@@ -14,7 +13,8 @@ import {
     limit,
     startAfter,
     getDocsFromServer,
-    getDocFromServer
+    getDocFromServer,
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -28,8 +28,11 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() })
+const db = getFirestore(app);
+
+// Enable offline persistence safely without crashing the app if it fails (e.g. Safari Private Mode)
+enableIndexedDbPersistence(db).catch((err) => {
+    console.warn("Offline persistence not enabled:", err.code);
 });
 
 export {
@@ -46,5 +49,6 @@ export {
     limit,
     startAfter,
     getDocsFromServer,
-    getDocFromServer
+    getDocFromServer,
+    onSnapshot
 };

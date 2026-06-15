@@ -1,4 +1,4 @@
-import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc, startAfter, getDocsFromServer, getDocFromServer } from '../firebase/public.js';
+import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc, startAfter, getDocsFromServer, getDocFromServer, onSnapshot } from '../firebase/public.js';
 import {
     LOADER_HTML, skeletonCards, skeletonReviews, emptyState, showError, buildContactHtml,
     escapeHtml, updatePageMeta, PAGE_META, initReadingProgress, removeReadingProgress, buildAboutHtml
@@ -8,31 +8,70 @@ import { createSpamGuard, sanitizeText, isValidEmail } from './spam-guard.js';
 
 async function fetchDocsReliably(q) {
     try {
-        let snap = await getDocs(q);
-        if (snap.empty && snap.metadata && snap.metadata.fromCache) {
-            snap = await getDocsFromServer(q);
-        }
-        return snap;
+        return await getDocs(q);
     } catch (e) {
+        console.warn("Error fetching documents:", e);
         throw e;
     }
 }
 
 async function fetchDocReliably(ref) {
     try {
-        let snap = await getDoc(ref);
-        if (!snap.exists() && snap.metadata && snap.metadata.fromCache) {
-            snap = await getDocFromServer(ref);
-        }
-        return snap;
+        return await getDoc(ref);
     } catch (e) {
+        console.warn("Error fetching document:", e);
         throw e;
     }
 }
 
+let activeListeners = [];
+function clearListeners() {
+    activeListeners.forEach(unsub => unsub());
+    activeListeners = [];
+}
+
+function fetchDocsLive(q, callback) {
+    return new Promise((resolve, reject) => {
+        let isFirst = true;
+        const unsub = onSnapshot(q, (snap) => {
+            callback(snap);
+            if (isFirst) {
+                isFirst = false;
+                resolve(snap);
+            }
+        }, (err) => {
+            if (isFirst) {
+                isFirst = false;
+                reject(err);
+            }
+            console.error(err);
+        });
+        activeListeners.push(unsub);
+    });
+}
+
+function fetchDocLive(ref, callback) {
+    return new Promise((resolve, reject) => {
+        let isFirst = true;
+        const unsub = onSnapshot(ref, (snap) => {
+            callback(snap);
+            if (isFirst) {
+                isFirst = false;
+                resolve(snap);
+            }
+        }, (err) => {
+            if (isFirst) {
+                isFirst = false;
+                reject(err);
+            }
+            console.error(err);
+        });
+        activeListeners.push(unsub);
+    });
+}
+
 const appRoot = document.getElementById('app-root');
 const REVIEWS_LIMIT = 8;
-let contactRequest = null;
 let homeDataLoading = false;
 let aosRefreshed = false;
 
@@ -51,13 +90,6 @@ function refreshAosOnce() {
     requestAnimationFrame(() => AOS.refreshHard());
 }
 
-function fetchContactSettings() {
-    if (!contactRequest) {
-        contactRequest = fetchDocReliably(doc(db, 'settings', 'contact'));
-    }
-    return contactRequest;
-}
-
 function applyContactHtml(html) {
     const footerEl = document.getElementById('footer-contact-info');
     if (footerEl) footerEl.innerHTML = html;
@@ -71,7 +103,8 @@ function applyContactSnap(snap) {
     applyContactHtml(html);
 }
 
-fetchContactSettings().then(applyContactSnap).catch(() => {
+// Global real-time listener for contact info
+onSnapshot(doc(db, 'settings', 'contact'), applyContactSnap, () => {
     applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>');
 });
 
@@ -96,6 +129,7 @@ function updateActiveNav(path) {
 }
 
 async function router() {
+    clearListeners();
     const hash = window.location.hash.slice(1) || 'home';
     const [path, id] = hash.split('?id=');
     const isHome = isHomePath(path);
@@ -214,9 +248,8 @@ function loadGeneralSettingsDeferred() {
     const load = () => {
         if (generalSettingsLoaded) return;
         generalSettingsLoaded = true;
-        getDocFromServer(doc(db, 'settings', 'general'))
-            .then(applyGeneralSettings)
-            .catch(() => {});
+        const unsub = onSnapshot(doc(db, 'settings', 'general'), applyGeneralSettings, () => {});
+        activeListeners.push(unsub);
     };
 
     if ('IntersectionObserver' in window) {
@@ -237,40 +270,33 @@ function loadHomeData() {
     if (homeDataLoading) return;
     homeDataLoading = true;
 
-    fetchContactSettings().then(applyContactSnap).catch(() => {});
+    const servicesQ = fetchDocsLive(query(collection(db, 'services'), where('featured', '==', true), limit(3)), snap => {
+        fillQueryGrid('services-grid', snap, renderServiceCard, 'services');
+    }).catch(() => {
+        const el = document.getElementById('services-grid');
+        if (el) el.innerHTML = showError('تعذر تحميل الخدمات.');
+    });
 
-    const servicesQ = fetchDocsReliably(query(collection(db, 'services'), where('featured', '==', true), limit(3)));
-    const projectsQ = fetchDocsReliably(query(collection(db, 'projects'), where('featured', '==', true), limit(3)));
-    const articlesQ = fetchDocsReliably(query(collection(db, 'articles'), orderBy('publishDate', 'desc'), limit(3)));
-    const reviewsQ = fetchDocsReliably(query(collection(db, 'reviews'), where('visible', '==', true), limit(REVIEWS_LIMIT)));
+    const projectsQ = fetchDocsLive(query(collection(db, 'projects'), where('featured', '==', true), limit(3)), snap => {
+        fillQueryGrid('projects-grid', snap, renderProjectCard, 'projects');
+    }).catch(() => {
+        const el = document.getElementById('projects-grid');
+        if (el) el.innerHTML = showError('تعذر تحميل المشاريع.');
+    });
 
-    servicesQ
-        .then(snap => fillQueryGrid('services-grid', snap, renderServiceCard, 'services'))
-        .catch(() => {
-            const el = document.getElementById('services-grid');
-            if (el) el.innerHTML = showError('تعذر تحميل الخدمات.');
-        });
+    const articlesQ = fetchDocsLive(query(collection(db, 'articles'), orderBy('publishDate', 'desc'), limit(3)), snap => {
+        fillQueryGrid('articles-grid', snap, renderArticleCard, 'articles');
+    }).catch(() => {
+        const el = document.getElementById('articles-grid');
+        if (el) el.innerHTML = showError('تعذر تحميل المقالات.');
+    });
 
-    projectsQ
-        .then(snap => fillQueryGrid('projects-grid', snap, renderProjectCard, 'projects'))
-        .catch(() => {
-            const el = document.getElementById('projects-grid');
-            if (el) el.innerHTML = showError('تعذر تحميل المشاريع.');
-        });
-
-    articlesQ
-        .then(snap => fillQueryGrid('articles-grid', snap, renderArticleCard, 'articles'))
-        .catch(() => {
-            const el = document.getElementById('articles-grid');
-            if (el) el.innerHTML = showError('تعذر تحميل المقالات.');
-        });
-
-    reviewsQ
-        .then(fillReviewsGrid)
-        .catch(() => {
-            const el = document.getElementById('reviews-grid');
-            if (el) el.innerHTML = showError('تعذر تحميل الآراء.');
-        });
+    const reviewsQ = fetchDocsLive(query(collection(db, 'reviews'), where('visible', '==', true), limit(REVIEWS_LIMIT)), snap => {
+        fillReviewsGrid(snap);
+    }).catch(() => {
+        const el = document.getElementById('reviews-grid');
+        if (el) el.innerHTML = showError('تعذر تحميل الآراء.');
+    });
 
     loadGeneralSettingsDeferred();
 
@@ -369,13 +395,14 @@ async function renderServices() {
         </div>
     `;
     try {
-        const snap = await fetchDocsReliably(collection(db, 'services'));
-        const grid = document.getElementById('all-services-grid');
-        if (!grid) return;
-        if (snap.empty) { grid.innerHTML = emptyState('services'); return; }
-        let html = '';
-        snap.forEach(d => { html += renderServiceCard(d.data(), d.id, false); });
-        grid.innerHTML = html;
+        await fetchDocsLive(collection(db, 'services'), snap => {
+            const grid = document.getElementById('all-services-grid');
+            if (!grid) return;
+            if (snap.empty) { grid.innerHTML = emptyState('services'); return; }
+            let html = '';
+            snap.forEach(d => { html += renderServiceCard(d.data(), d.id, false); });
+            grid.innerHTML = html;
+        });
     } catch (e) {
         document.getElementById('all-services-grid').innerHTML = showError('تعذر تحميل الخدمات.');
     }
@@ -412,121 +439,142 @@ async function renderArticles() {
 }
 
 async function setupPagination(collectionName, containerId, renderCardFn, emptyType, orderQuery = null) {
-    let lastVisible = null;
-    const PAGE_SIZE = 6;
     const grid = document.getElementById(containerId);
     const loadMoreBtn = document.getElementById('load-more-btn');
+    let currentLimit = 6;
+    let currentUnsub = null;
 
-    async function loadChunk(isFirst = false) {
-        if (isFirst) grid.innerHTML = skeletonCards(3);
-        loadMoreBtn.style.display = 'none';
-        try {
-            const queries = [];
-            if (orderQuery) queries.push(orderQuery);
-            if (lastVisible) queries.push(startAfter(lastVisible));
-            queries.push(limit(PAGE_SIZE));
-            const snap = await fetchDocsReliably(query(collection(db, collectionName), ...queries));
-            if (snap.empty && isFirst) {
-                grid.innerHTML = emptyState(emptyType);
-            } else if (!snap.empty) {
-                if (isFirst) grid.innerHTML = '';
-                lastVisible = snap.docs[snap.docs.length - 1];
-                snap.forEach(d => { grid.innerHTML += renderCardFn(d.data(), d.id); });
-                if (snap.docs.length === PAGE_SIZE) loadMoreBtn.style.display = 'inline-block';
-            }
-        } catch (e) {
-            console.error(e);
-            if (isFirst) grid.innerHTML = showError('تعذر الاتصال بقاعدة البيانات.');
+    function attachListener() {
+        if (currentUnsub) { 
+            currentUnsub(); 
+            const idx = activeListeners.indexOf(currentUnsub); 
+            if (idx > -1) activeListeners.splice(idx, 1); 
         }
+        
+        const queries = [];
+        if (orderQuery) queries.push(orderQuery);
+        queries.push(limit(currentLimit + 1));
+        
+        currentUnsub = onSnapshot(query(collection(db, collectionName), ...queries), snap => {
+            if (snap.empty) {
+                grid.innerHTML = emptyState(emptyType);
+                loadMoreBtn.style.display = 'none';
+                return;
+            }
+            let html = '';
+            const docs = snap.docs;
+            const hasMore = docs.length > currentLimit;
+            const displayDocs = hasMore ? docs.slice(0, currentLimit) : docs;
+            
+            displayDocs.forEach(d => { html += renderCardFn(d.data(), d.id); });
+            grid.innerHTML = html;
+            
+            if (hasMore) loadMoreBtn.style.display = 'inline-block';
+            else loadMoreBtn.style.display = 'none';
+        }, err => {
+            console.error(err);
+            grid.innerHTML = showError('تعذر الاتصال بقاعدة البيانات.');
+            loadMoreBtn.style.display = 'none';
+        });
+        activeListeners.push(currentUnsub);
     }
-    loadMoreBtn.addEventListener('click', () => loadChunk(false));
-    await loadChunk(true);
+    
+    grid.innerHTML = skeletonCards(3);
+    attachListener();
+    
+    loadMoreBtn.addEventListener('click', () => {
+        currentLimit += 6;
+        attachListener();
+    });
 }
 
 async function renderProjectDetail(id) {
     if (!id) return router();
     try {
-        const docSnap = await fetchDocReliably(doc(db, 'projects', id));
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.mainImage });
-            appRoot.innerHTML = `
-                <div class="view active">
-                    <div class="detail-header">
-                        <span class="trunk-badge">مشروع جذع</span>
-                        <h1>${escapeHtml(data.title)}</h1>
-                        <div class="detail-meta"><span>التقنيات: ${escapeHtml(data.technologies)}</span></div>
-                    </div>
-                    ${data.mainImage ? `<img src="${escapeHtml(data.mainImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
-                    <div class="detail-content">
-                        <p>${escapeHtml(data.fullDescription).replace(/\n/g, '<br>')}</p>
-                        <div style="margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
-                            ${data.demoLink ? `<a href="${escapeHtml(data.demoLink)}" target="_blank" rel="noopener" class="btn">معاينة حية</a>` : ''}
-                            ${data.githubLink ? `<a href="${escapeHtml(data.githubLink)}" target="_blank" rel="noopener" class="btn" style="background:var(--text-main);">الكود المصدري</a>` : ''}
-                            ${!data.demoLink && !data.githubLink ? '' : ''}
+        await fetchDocLive(doc(db, 'projects', id), docSnap => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.mainImage });
+                appRoot.innerHTML = `
+                    <div class="view active">
+                        <div class="detail-header">
+                            <span class="trunk-badge">مشروع جذع</span>
+                            <h1>${escapeHtml(data.title)}</h1>
+                            <div class="detail-meta"><span>التقنيات: ${escapeHtml(data.technologies)}</span></div>
+                        </div>
+                        ${data.mainImage ? `<img src="${escapeHtml(data.mainImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
+                        <div class="detail-content">
+                            <p>${escapeHtml(data.fullDescription).replace(/\n/g, '<br>')}</p>
+                            <div style="margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
+                                ${data.demoLink ? `<a href="${escapeHtml(data.demoLink)}" target="_blank" rel="noopener" class="btn">معاينة حية</a>` : ''}
+                                ${data.githubLink ? `<a href="${escapeHtml(data.githubLink)}" target="_blank" rel="noopener" class="btn" style="background:var(--text-main);">الكود المصدري</a>` : ''}
+                                ${!data.demoLink && !data.githubLink ? '' : ''}
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 40px;">
+                            <a href="#projects" class="btn" style="background:var(--text-muted);">العودة للمشاريع</a>
                         </div>
                     </div>
-                    <div style="text-align: center; margin-top: 40px;">
-                        <a href="#projects" class="btn" style="background:var(--text-muted);">العودة للمشاريع</a>
-                    </div>
-                </div>
-            `;
-        } else appRoot.innerHTML = showError('المشروع غير موجود.');
+                `;
+            } else appRoot.innerHTML = showError('المشروع غير موجود.');
+        });
     } catch (e) { appRoot.innerHTML = showError('خطأ في تحميل المشروع.'); }
 }
 
 async function renderArticleDetail(id) {
     if (!id) return router();
     try {
-        const docSnap = await fetchDocReliably(doc(db, 'articles', id));
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.coverImage });
-            appRoot.innerHTML = `
-                <div class="view active">
-                    <div class="detail-header">
-                        <span class="trunk-badge">مقال</span>
-                        <h1>${escapeHtml(data.title)}</h1>
-                        <div class="detail-meta"><span>نُشر في: ${escapeHtml(data.publishDate)}</span></div>
+        await fetchDocLive(doc(db, 'articles', id), docSnap => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.coverImage });
+                appRoot.innerHTML = `
+                    <div class="view active">
+                        <div class="detail-header">
+                            <span class="trunk-badge">مقال</span>
+                            <h1>${escapeHtml(data.title)}</h1>
+                            <div class="detail-meta"><span>نُشر في: ${escapeHtml(data.publishDate)}</span></div>
+                        </div>
+                        ${data.coverImage ? `<img src="${escapeHtml(data.coverImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
+                        <div class="detail-content">${data.content}</div>
+                        <div style="text-align: center; margin-top: 40px;">
+                            <a href="#articles" class="btn" style="background:var(--text-muted);">العودة للمقالات</a>
+                        </div>
                     </div>
-                    ${data.coverImage ? `<img src="${escapeHtml(data.coverImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
-                    <div class="detail-content">${data.content}</div>
-                    <div style="text-align: center; margin-top: 40px;">
-                        <a href="#articles" class="btn" style="background:var(--text-muted);">العودة للمقالات</a>
-                    </div>
-                </div>
-            `;
-            initReadingProgress();
-        } else appRoot.innerHTML = showError('المقال غير موجود.');
+                `;
+                initReadingProgress();
+            } else appRoot.innerHTML = showError('المقال غير موجود.');
+        });
     } catch (e) { appRoot.innerHTML = showError('خطأ في تحميل المقال.'); }
 }
 
 async function renderServiceDetail(id) {
     if (!id) return router();
     try {
-        const docSnap = await fetchDocReliably(doc(db, 'services', id));
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            updatePageMeta({ title: `${data.title} - جذع`, description: data.description || data.title });
-            appRoot.innerHTML = `
-                <div class="view active">
-                    <div class="detail-header">
-                        <span class="trunk-badge">خدمة</span>
-                        <h1>${escapeHtml(data.title)}</h1>
-                    </div>
-                    <div class="detail-content glass-panel" style="padding: 40px; border-radius: 20px; text-align: center; margin-top: 30px;">
-                        <h2>تفاصيل الخدمة</h2>
-                        <p style="font-size: 1.2rem; line-height: 2;">${escapeHtml(data.description)}</p>
-                        <div style="margin-top: 40px;">
-                            <a href="#contact" class="btn">اطلب الخدمة الآن</a>
+        await fetchDocLive(doc(db, 'services', id), docSnap => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.description || data.title });
+                appRoot.innerHTML = `
+                    <div class="view active">
+                        <div class="detail-header">
+                            <span class="trunk-badge">خدمة</span>
+                            <h1>${escapeHtml(data.title)}</h1>
+                        </div>
+                        <div class="detail-content glass-panel" style="padding: 40px; border-radius: 20px; text-align: center; margin-top: 30px;">
+                            <h2>تفاصيل الخدمة</h2>
+                            <p style="font-size: 1.2rem; line-height: 2;">${escapeHtml(data.description)}</p>
+                            <div style="margin-top: 40px;">
+                                <a href="#contact" class="btn">اطلب الخدمة الآن</a>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 40px;">
+                            <a href="#services" class="btn" style="background:var(--text-muted);">العودة للخدمات</a>
                         </div>
                     </div>
-                    <div style="text-align: center; margin-top: 40px;">
-                        <a href="#services" class="btn" style="background:var(--text-muted);">العودة للخدمات</a>
-                    </div>
-                </div>
-            `;
-        } else appRoot.innerHTML = showError('الخدمة غير موجودة.');
+                `;
+            } else appRoot.innerHTML = showError('الخدمة غير موجودة.');
+        });
     } catch (e) { appRoot.innerHTML = showError('خطأ في تحميل الخدمة.'); }
 }
 

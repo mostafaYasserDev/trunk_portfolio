@@ -606,8 +606,9 @@ body {
 @media (max-width: 768px) {
   .review-box {
     padding: 28px 20px !important;
-    margin: 0 4px;
     border-radius: 14px !important;
+    max-width: 100%;
+    margin: 0 auto;
   }
 }
 

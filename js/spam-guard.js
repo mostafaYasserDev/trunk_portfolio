@@ -60,7 +60,7 @@ export function createSpamGuard(formKey, options = {}) {
 
     function attachToForm(form) {
         attachHoneypot(form);
-        attachCaptcha(form);
+        // attachCaptcha is disabled as per user request to remove verification
     }
 
     function validate(form, values = {}) {

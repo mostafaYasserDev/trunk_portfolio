@@ -8,15 +8,32 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/responsive.css">
     <style>
-        body { background-color: var(--background); padding: 40px 20px; }
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            min-height: 100vh;
+            background-color: var(--background); 
+            overflow-x: hidden;
+        }
+        .page-wrapper {
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            width: 100%;
+        }
         .review-box {
             background-color: var(--card-bg);
             padding: 40px;
             border-radius: 15px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
             max-width: 600px;
-            margin: 0 auto;
             border: 1px solid var(--border-color);
+            box-sizing: border-box;
         }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 10px; font-weight: bold; }
@@ -34,43 +51,57 @@
         }
         .thank-you-box .emoji { font-size: 4rem; margin-bottom: 15px; }
         .back-link { display: block; text-align: center; margin-top: 25px; font-weight: bold; }
+
+        @media (max-width: 600px) {
+            .page-wrapper { padding: 16px; }
+            .review-box { padding: 24px 20px; border-radius: 12px; }
+            .review-box .section-title { font-size: 1.3rem !important; }
+            .form-group input, .form-group textarea { font-size: 1rem; padding: 10px; }
+            .thank-you-box .emoji { font-size: 3rem; }
+            .back-link { margin-top: 18px; }
+            button.btn { font-size: 1rem; padding: 10px 12px; }
+        }
+
+        /* Ensure inputs don't cause zoom on iOS */
+        input, textarea, button { -webkit-appearance: none; }
     </style>
 </head>
 <body>
+    <div class="page-wrapper">
+        <div class="review-box">
+            <div class="logo" style="text-align: center; margin-bottom: 20px;">جذع <span>.</span></div>
 
-    <div class="review-box">
-        <div class="logo" style="text-align: center; margin-bottom: 20px;">جذع <span>.</span></div>
+            <div id="form-section">
+                <h2 class="section-title" style="font-size: 1.8rem; text-align: center; display: block;">شاركنا رأيك</h2>
+                <p style="text-align: center; color: var(--text-muted); margin-bottom: 30px;">يسعدني سماع تجربتك. شاركني رأيك بحرية — سيُراجع قبل النشر في الموقع.</p>
 
-        <div id="form-section">
-            <h2 class="section-title" style="font-size: 1.8rem; text-align: center; display: block;">شاركنا رأيك</h2>
-            <p style="text-align: center; color: var(--text-muted); margin-bottom: 30px;">يسعدني سماع تجربتك. شاركني رأيك بحرية — سيُراجع قبل النشر في الموقع.</p>
+                <form id="review-form">
+                    <div class="form-group">
+                        <label for="client-name">اسمك أو اسم شركتك</label>
+                        <input type="text" id="client-name" placeholder="مثال: أحمد محمد / شركة النور" required maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="service-name">الخدمة التي قدمتها لك (اختياري)</label>
+                        <input type="text" id="service-name" placeholder="مثال: تصميم موقع، تطوير تطبيق..." maxlength="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="review-text">رأيك وتجربتك</label>
+                        <textarea id="review-text" rows="5" placeholder="اكتب رأيك هنا..." required maxlength="2000"></textarea>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">إرسال الرأي</button>
+                    <div id="status-msg" class="msg"></div>
+                </form>
+            </div>
 
-            <form id="review-form">
-                <div class="form-group">
-                    <label for="client-name">اسمك أو اسم شركتك</label>
-                    <input type="text" id="client-name" placeholder="مثال: أحمد محمد / شركة النور" required maxlength="100">
-                </div>
-                <div class="form-group">
-                    <label for="service-name">الخدمة التي قدمتها لك (اختياري)</label>
-                    <input type="text" id="service-name" placeholder="مثال: تصميم موقع، تطوير تطبيق..." maxlength="120">
-                </div>
-                <div class="form-group">
-                    <label for="review-text">رأيك وتجربتك</label>
-                    <textarea id="review-text" rows="5" placeholder="اكتب رأيك هنا..." required maxlength="2000"></textarea>
-                </div>
-                <button type="submit" class="btn" style="width: 100%;">إرسال الرأي</button>
-                <div id="status-msg" class="msg"></div>
-            </form>
+            <div id="thank-you" class="thank-you-box">
+                <div class="emoji">🌿</div>
+                <h2 class="section-title" style="display: block; text-align: center;">شكراً لمشاركتك!</h2>
+                <p style="color: var(--text-muted); line-height: 1.9;">يسعدني جداً أنك شاركت تجربتك معي. سأراجع رأيك وأعرضه في الموقع قريباً بإذن الله.</p>
+                <a href="../index.html" class="btn" style="margin-top: 20px;">العودة للرئيسية</a>
+            </div>
+
+            <a href="../index.html" class="back-link" id="back-link">← العودة للموقع</a>
         </div>
-
-        <div id="thank-you" class="thank-you-box">
-            <div class="emoji">🌿</div>
-            <h2 class="section-title" style="display: block; text-align: center;">شكراً لمشاركتك!</h2>
-            <p style="color: var(--text-muted); line-height: 1.9;">يسعدني جداً أنك شاركت تجربتك معي. سأراجع رأيك وأعرضه في الموقع قريباً بإذن الله.</p>
-            <a href="../index.html" class="btn" style="margin-top: 20px;">العودة للرئيسية</a>
-        </div>
-
-        <a href="../index.html" class="back-link" id="back-link">← العودة للموقع</a>
     </div>
 
     <script type="module">
