@@ -1,4 +1,4 @@
-import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc } from '../firebase/public.js';
+import { db, collection, getDocs, getDocsFromCache, query, where, limit, orderBy, doc, getDoc, getDocFromCache } from '../firebase/public.js';
 import {
     LOADER_HTML, skeletonCards, skeletonReviews, emptyState, showError, buildContactHtml,
     escapeHtml, updatePageMeta, PAGE_META, initReadingProgress, removeReadingProgress, buildAboutHtml
@@ -6,21 +6,30 @@ import {
 import { bindSocialModals } from './social-modal.js';
 import { createSpamGuard, sanitizeText, isValidEmail } from './spam-guard.js';
 
-async function fetchDocsReliably(q) {
+// Cache-first: serve from IndexedDB instantly, refresh from network silently in background
+async function fetchDocsLive(q, callback) {
     try {
-        return await getDocs(q);
-    } catch (e) {
-        console.warn("Error fetching documents:", e);
-        throw e;
+        const cached = await getDocsFromCache(q);
+        callback(cached);
+        // Background network refresh (silent, no await)
+        getDocs(q).then(fresh => { if (!fresh.metadata.fromCache) callback(fresh); }).catch(() => {});
+        return cached;
+    } catch {
+        // Nothing in cache yet — must go to network
+        return getDocs(q).then(snap => { callback(snap); return snap; }).catch(err => { throw err; });
     }
 }
 
-async function fetchDocReliably(ref) {
+async function fetchDocLive(ref, callback) {
     try {
-        return await getDoc(ref);
-    } catch (e) {
-        console.warn("Error fetching document:", e);
-        throw e;
+        const cached = await getDocFromCache(ref);
+        callback(cached);
+        // Background network refresh (silent, no await)
+        getDoc(ref).then(fresh => { if (!fresh.metadata.fromCache) callback(fresh); }).catch(() => {});
+        return cached;
+    } catch {
+        // Nothing in cache yet — must go to network
+        return getDoc(ref).then(snap => { callback(snap); return snap; }).catch(err => { throw err; });
     }
 }
 
@@ -28,26 +37,6 @@ let activeListeners = [];
 function clearListeners() {
     activeListeners.forEach(unsub => unsub());
     activeListeners = [];
-}
-
-function fetchDocsLive(q, callback) {
-    return getDocs(q).then(snap => {
-        callback(snap);
-        return snap;
-    }).catch(err => {
-        console.error(err);
-        throw err;
-    });
-}
-
-function fetchDocLive(ref, callback) {
-    return getDoc(ref).then(snap => {
-        callback(snap);
-        return snap;
-    }).catch(err => {
-        console.error(err);
-        throw err;
-    });
 }
 
 const appRoot = document.getElementById('app-root');
@@ -83,9 +72,12 @@ function applyContactSnap(snap) {
     applyContactHtml(html);
 }
 
-// Load contact info once
-getDoc(doc(db, 'settings', 'contact')).then(applyContactSnap).catch(() => {
-    applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>');
+// Load contact info (cache-first)
+getDocFromCache(doc(db, 'settings', 'contact')).then(applyContactSnap).catch(() => {
+    // Not in cache, try network
+    getDoc(doc(db, 'settings', 'contact')).then(applyContactSnap).catch(() => {
+        applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>');
+    });
 });
 
 const routes = {
@@ -253,7 +245,9 @@ function loadGeneralSettingsDeferred() {
     const load = () => {
         if (generalSettingsLoaded) return;
         generalSettingsLoaded = true;
-        getDoc(doc(db, 'settings', 'general')).then(applyGeneralSettings).catch(() => {});
+        getDocFromCache(doc(db, 'settings', 'general')).then(applyGeneralSettings).catch(() => {
+            getDoc(doc(db, 'settings', 'general')).then(applyGeneralSettings).catch(() => {});
+        });
     };
 
     if ('IntersectionObserver' in window) {
