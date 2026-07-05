@@ -83,6 +83,34 @@
                 </div>
                 <div class="form-group">
                     <label>المحتوى</label>
+                    <!-- Custom Quill Toolbar -->
+                    <div id="art-toolbar">
+                        <span class="ql-formats">
+                            <select class="ql-header"><option value="1"></option><option value="2"></option><option value="3"></option><option selected></option></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-bold"></button>
+                            <button class="ql-italic"></button>
+                            <button class="ql-underline"></button>
+                            <button class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-list" value="ordered"></button>
+                            <button class="ql-list" value="bullet"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-link"></button>
+                            <button class="ql-image"></button>
+                            <button class="ql-video"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-clean"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button id="art-btn-cta" title="إدراج زر برابط" style="width:auto;padding:0 8px;font-size:11px;font-weight:bold;">&#128279; زر</button>
+                            <button id="art-btn-html" title="إدراج HTML مخصص" style="width:auto;padding:0 8px;font-size:11px;font-weight:bold;">&lt;/&gt; HTML</button>
+                        </span>
+                    </div>
                     <div id="editor-container"></div>
                 </div>
                 <div class="form-group">
@@ -182,28 +210,16 @@
             document.getElementById('form-msg').className = 'msg error';
         }
 
-        // ── Quill toolbar container with custom buttons ──
-        const toolbarOptions = [
-            [{ 'header': [1, 2, 3, false] }],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            ['link', 'image', 'video'],
-            ['clean'],
-            ['btn-insert', 'html-insert']  // custom buttons
-        ];
-
+        // ── Quill init with custom HTML toolbar ──
         var quill = typeof Quill !== 'undefined' ? new Quill('#editor-container', {
             theme: 'snow',
             placeholder: 'اكتب مقالك الرائع هنا...',
-            modules: { toolbar: { container: toolbarOptions } }
+            modules: { toolbar: '#art-toolbar' }
         }) : null;
 
-        // ── Wire up custom toolbar buttons ──
-        if (quill) {
-            const toolbar = quill.getModule('toolbar');
-            toolbar.addHandler('btn-insert',  () => openCtaModal());
-            toolbar.addHandler('html-insert', () => openHtmlModal());
-        }
+        // ── Bind custom toolbar button clicks directly ──
+        document.getElementById('art-btn-cta').addEventListener('click', () => openCtaModal());
+        document.getElementById('art-btn-html').addEventListener('click', () => openHtmlModal());
 
         // ═══════════════════ CTA BUTTON MODAL ═══════════════════
         const ctaModal      = document.getElementById('cta-btn-modal');

@@ -91,6 +91,33 @@
 
                 <div class="form-group">
                     <label for="proj-full">الوصف الكامل</label>
+                    <!-- Custom Quill Toolbar -->
+                    <div id="proj-toolbar">
+                        <span class="ql-formats">
+                            <select class="ql-header"><option value="1"></option><option value="2"></option><option value="3"></option><option selected></option></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-bold"></button>
+                            <button class="ql-italic"></button>
+                            <button class="ql-underline"></button>
+                            <button class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-list" value="ordered"></button>
+                            <button class="ql-list" value="bullet"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-link"></button>
+                            <button class="ql-image"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-clean"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button id="proj-btn-cta" title="إدراج زر برابط" style="width:auto;padding:0 8px;font-size:11px;font-weight:bold;">&#128279; زر</button>
+                            <button id="proj-btn-html" title="إدراج HTML مخصص" style="width:auto;padding:0 8px;font-size:11px;font-weight:bold;">&lt;/&gt; HTML</button>
+                        </span>
+                    </div>
                     <div id="proj-full-editor"></div>
                     <input type="hidden" id="proj-full">
                 </div>
@@ -197,23 +224,16 @@
         onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login.html'; });
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-        // ── Quill Editor for fullDescription ──
-        const toolbarOptions = [
-            [{ 'header': [1, 2, 3, false] }],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            ['link', 'image'],
-            ['clean'],
-            ['btn-insert', 'html-insert']
-        ];
+        // ── Quill Editor for fullDescription (custom HTML toolbar) ──
         const quillProj = new Quill('#proj-full-editor', {
             theme: 'snow',
             placeholder: 'صف المشروع بالتفصيل...',
-            modules: { toolbar: { container: toolbarOptions } }
+            modules: { toolbar: '#proj-toolbar' }
         });
-        const toolbar = quillProj.getModule('toolbar');
-        toolbar.addHandler('btn-insert',  () => openCtaModal());
-        toolbar.addHandler('html-insert', () => openHtmlModal());
+
+        // ── Bind custom toolbar button clicks directly ──
+        document.getElementById('proj-btn-cta').addEventListener('click', () => openCtaModal());
+        document.getElementById('proj-btn-html').addEventListener('click', () => openHtmlModal());
 
         // ═══════════════════ CTA BUTTON MODAL ═══════════════════
         const ctaModal      = document.getElementById('cta-btn-modal');
