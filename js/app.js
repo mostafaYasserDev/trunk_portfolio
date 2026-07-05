@@ -31,42 +31,22 @@ function clearListeners() {
 }
 
 function fetchDocsLive(q, callback) {
-    return new Promise((resolve, reject) => {
-        let isFirst = true;
-        const unsub = onSnapshot(q, (snap) => {
-            callback(snap);
-            if (isFirst) {
-                isFirst = false;
-                resolve(snap);
-            }
-        }, (err) => {
-            if (isFirst) {
-                isFirst = false;
-                reject(err);
-            }
-            console.error(err);
-        });
-        activeListeners.push(unsub);
+    return getDocs(q).then(snap => {
+        callback(snap);
+        return snap;
+    }).catch(err => {
+        console.error(err);
+        throw err;
     });
 }
 
 function fetchDocLive(ref, callback) {
-    return new Promise((resolve, reject) => {
-        let isFirst = true;
-        const unsub = onSnapshot(ref, (snap) => {
-            callback(snap);
-            if (isFirst) {
-                isFirst = false;
-                resolve(snap);
-            }
-        }, (err) => {
-            if (isFirst) {
-                isFirst = false;
-                reject(err);
-            }
-            console.error(err);
-        });
-        activeListeners.push(unsub);
+    return getDoc(ref).then(snap => {
+        callback(snap);
+        return snap;
+    }).catch(err => {
+        console.error(err);
+        throw err;
     });
 }
 
@@ -103,8 +83,8 @@ function applyContactSnap(snap) {
     applyContactHtml(html);
 }
 
-// Global real-time listener for contact info
-onSnapshot(doc(db, 'settings', 'contact'), applyContactSnap, () => {
+// Load contact info once
+getDoc(doc(db, 'settings', 'contact')).then(applyContactSnap).catch(() => {
     applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>');
 });
 
@@ -273,8 +253,7 @@ function loadGeneralSettingsDeferred() {
     const load = () => {
         if (generalSettingsLoaded) return;
         generalSettingsLoaded = true;
-        const unsub = onSnapshot(doc(db, 'settings', 'general'), applyGeneralSettings, () => {});
-        activeListeners.push(unsub);
+        getDoc(doc(db, 'settings', 'general')).then(applyGeneralSettings).catch(() => {});
     };
 
     if ('IntersectionObserver' in window) {
@@ -467,20 +446,13 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
     const grid = document.getElementById(containerId);
     const loadMoreBtn = document.getElementById('load-more-btn');
     let currentLimit = 6;
-    let currentUnsub = null;
 
     function attachListener() {
-        if (currentUnsub) { 
-            currentUnsub(); 
-            const idx = activeListeners.indexOf(currentUnsub); 
-            if (idx > -1) activeListeners.splice(idx, 1); 
-        }
-        
         const queries = [];
         if (orderQuery) queries.push(orderQuery);
         queries.push(limit(currentLimit + 1));
         
-        currentUnsub = onSnapshot(query(collection(db, collectionName), ...queries), snap => {
+        getDocs(query(collection(db, collectionName), ...queries)).then(snap => {
             if (snap.empty) {
                 grid.innerHTML = emptyState(emptyType);
                 loadMoreBtn.style.display = 'none';
@@ -496,18 +468,20 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
             
             if (hasMore) loadMoreBtn.style.display = 'inline-block';
             else loadMoreBtn.style.display = 'none';
-        }, err => {
+        }).catch(err => {
             console.error(err);
             grid.innerHTML = showError('تعذر الاتصال بقاعدة البيانات.');
             loadMoreBtn.style.display = 'none';
         });
-        activeListeners.push(currentUnsub);
     }
     
     grid.innerHTML = skeletonCards(3);
     attachListener();
     
-    loadMoreBtn.addEventListener('click', () => {
+    const newBtn = loadMoreBtn.cloneNode(true);
+    loadMoreBtn.parentNode.replaceChild(newBtn, loadMoreBtn);
+    
+    newBtn.addEventListener('click', () => {
         currentLimit += 6;
         attachListener();
     });
