@@ -1,8 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import {
     initializeFirestore,
-    persistentLocalCache,
-    persistentMultipleTabManager,
+    memoryLocalCache,
     collection,
     getDocs,
     getDoc,
@@ -30,7 +29,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    localCache: memoryLocalCache()
 });
 
 export {
