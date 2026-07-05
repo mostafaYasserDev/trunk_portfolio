@@ -30,6 +30,7 @@
     <noscript><link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+    <style>@font-face{font-family:'Font Awesome 6 Free';font-display:swap}@font-face{font-family:'Font Awesome 6 Brands';font-display:swap}</style>
     <link rel="modulepreload" href="firebase/public.js">
     <link rel="modulepreload" href="js/helpers.js">
     <link rel="modulepreload" href="js/app.js">
@@ -40,7 +41,7 @@
     <div class="container">
         <header>
             <a href="#home" class="logo logo-link">
-                <img src="assets/logo.png" alt="جذع" fetchpriority="high">
+                <img src="assets/logo.png" alt="جذع" fetchpriority="high" width="48" height="48">
                 <div class="logo-text">جذع <span>.</span></div>
             </a>
             <div class="header-right">
@@ -178,7 +179,7 @@
             <div class="footer-grid">
                 <div class="footer-brand">
                     <a href="#home" class="footer-logo">
-                        <img src="assets/logo.png" alt="جذع">
+                        <img src="assets/logo.png" alt="جذع" loading="lazy" width="40" height="40">
                         <span>جذع <span style="color: var(--accent-dark);">.</span></span>
                     </a>
                     <p>أروي حكايات برمجية بروح فنية. تتأصل الأفكار وتنمو كالأشجار.</p>
@@ -209,7 +210,6 @@
         <i class="fas fa-arrow-up"></i>
     </button>
 
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js" defer></script>
     <script type="module">
         import { initUI } from './js/ui.js';
         initUI();

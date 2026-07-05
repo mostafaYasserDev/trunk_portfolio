@@ -4,22 +4,44 @@ function initAos() {
     document.body.classList.add('aos-init');
 }
 
+function loadAos() {
+    if (document.querySelector('script[src*="aos"]')) return;
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/aos@2.3.1/dist/aos.js';
+    s.onload = initAos;
+    document.head.appendChild(s);
+}
+
 export function initUI() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
 
-    if (typeof AOS !== 'undefined') {
-        initAos();
-    } else {
-        window.addEventListener('load', initAos, { once: true });
+    // Defer AOS until user interaction or 3s — whichever comes first
+    const aosEvents = ['scroll', 'mousemove', 'touchstart', 'keydown'];
+    let aosLoaded = false;
+    function loadAosOnce() {
+        if (aosLoaded) return;
+        aosLoaded = true;
+        aosEvents.forEach(ev => window.removeEventListener(ev, loadAosOnce));
+        loadAos();
     }
+    aosEvents.forEach(ev => window.addEventListener(ev, loadAosOnce, { once: true, passive: true }));
+    setTimeout(loadAosOnce, 3000);
 
     const bttBtn = document.getElementById('back-to-top');
     if (bttBtn) {
+        // Use rAF to avoid forced reflow on every scroll event
+        let ticking = false;
         window.addEventListener('scroll', () => {
-            bttBtn.style.display = document.documentElement.scrollTop > 300 ? 'block' : 'none';
-        });
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    bttBtn.style.display = document.documentElement.scrollTop > 300 ? 'block' : 'none';
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        }, { passive: true });
         bttBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
 
