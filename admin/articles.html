@@ -285,9 +285,15 @@
 
         document.getElementById('cta-insert-btn').addEventListener('click', () => {
             const text  = ctaTextInput.value.trim();
-            const url   = ctaUrlInput.value.trim();
+            let   url   = ctaUrlInput.value.trim();
             if (!text) { ctaTextInput.focus(); return; }
             if (!url)  { ctaUrlInput.focus();  return; }
+
+            // ── Auto-fix URL: always make it absolute (never relative) ──
+            if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) {
+                url = 'https://' + url;
+                ctaUrlInput.value = url;
+            }
 
             // Insert using custom blot — Quill preserves href + classes
             const idx = (ctaRange && ctaRange.index != null) ? ctaRange.index : Math.max(0, quill.getLength() - 1);

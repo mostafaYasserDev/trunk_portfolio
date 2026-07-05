@@ -522,6 +522,16 @@ async function renderProjectDetail(id) {
                         </div>
                     </div>
                 `;
+                // ── Guarantee all inline-btn links open in new tab (never site navigation) ──
+                appRoot.querySelectorAll('a.inline-btn').forEach(a => {
+                    a.setAttribute('target', '_blank');
+                    a.setAttribute('rel', 'noopener noreferrer');
+                    // Ensure URL is absolute
+                    const h = a.getAttribute('href') || '';
+                    if (h && !/^https?:\/\//i.test(h) && !/^mailto:/i.test(h)) {
+                        a.setAttribute('href', 'https://' + h);
+                    }
+                });
             } else appRoot.innerHTML = showError('المشروع غير موجود.');
         });
     } catch (e) { appRoot.innerHTML = showError('خطأ في تحميل المشروع.'); }
@@ -548,6 +558,16 @@ async function renderArticleDetail(id) {
                         </div>
                     </div>
                 `;
+                // ── Guarantee all inline-btn links open in new tab (never site navigation) ──
+                appRoot.querySelectorAll('a.inline-btn').forEach(a => {
+                    a.setAttribute('target', '_blank');
+                    a.setAttribute('rel', 'noopener noreferrer');
+                    // Ensure URL is absolute
+                    const h = a.getAttribute('href') || '';
+                    if (h && !/^https?:\/\//i.test(h) && !/^mailto:/i.test(h)) {
+                        a.setAttribute('href', 'https://' + h);
+                    }
+                });
                 initReadingProgress();
             } else appRoot.innerHTML = showError('المقال غير موجود.');
         });

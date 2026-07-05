@@ -285,9 +285,17 @@
         document.getElementById('cta-cancel-btn').addEventListener('click', () => ctaModal.classList.remove('active'));
         ctaModal.addEventListener('click', (e) => { if (e.target === ctaModal) ctaModal.classList.remove('active'); });
         document.getElementById('cta-insert-btn').addEventListener('click', () => {
-            const text = ctaTextInput.value.trim(), url = ctaUrlInput.value.trim();
+            const text = ctaTextInput.value.trim();
+            let   url  = ctaUrlInput.value.trim();
             if (!text) { ctaTextInput.focus(); return; }
             if (!url)  { ctaUrlInput.focus();  return; }
+
+            // ── Auto-fix URL: always make it absolute (never relative) ──
+            if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) {
+                url = 'https://' + url;
+                ctaUrlInput.value = url;
+            }
+
             // Insert using custom blot — Quill preserves href + classes
             const idx = (ctaRange && ctaRange.index != null) ? ctaRange.index : Math.max(0, quillProj.getLength() - 1);
             quillProj.insertText(idx, text, {
