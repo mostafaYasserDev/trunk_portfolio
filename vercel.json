@@ -13,6 +13,20 @@
       "permanent": false
     }
   ],
+  "rewrites": [
+    {
+      "source": "/article/:id",
+      "destination": "/api/og?type=article&id=:id"
+    },
+    {
+      "source": "/project/:id",
+      "destination": "/api/og?type=project&id=:id"
+    },
+    {
+      "source": "/service/:id",
+      "destination": "/api/og?type=service&id=:id"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

@@ -130,8 +130,33 @@ function updateActiveNav(path) {
 
 async function router() {
     clearListeners();
-    const hash = window.location.hash.slice(1) || 'home';
-    const [path, id] = hash.split('?id=');
+    let hash = window.location.hash.slice(1);
+    let path = 'home';
+    let id = '';
+
+    if (hash) {
+        [path, id] = hash.split('?id=');
+    } else {
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        if (pathParts.length > 0) {
+            path = pathParts[0];
+            if (pathParts.length > 1) {
+                id = pathParts[1];
+            }
+        }
+    }
+    
+    if (!routes[path]) {
+        path = 'home';
+    }
+
+    // Update URL in address bar for clean sharing
+    if (id && (path === 'article' || path === 'project' || path === 'service')) {
+        window.history.replaceState(null, '', `/${path}/${id}`);
+    } else if (path === 'home') {
+        window.history.replaceState(null, '', '/');
+    }
+
     const isHome = isHomePath(path);
 
     removeReadingProgress();
@@ -583,7 +608,14 @@ function bootRouter() {
 }
 
 window.addEventListener('hashchange', router);
-const initialPath = (window.location.hash.slice(1) || 'home').split('?id=')[0];
+let initialPath = 'home';
+if (window.location.hash) {
+    initialPath = window.location.hash.slice(1).split('?id=')[0] || 'home';
+} else {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length > 0) initialPath = parts[0];
+}
+
 if (isHomePath(initialPath)) {
     queueMicrotask(loadHomeData);
 }
