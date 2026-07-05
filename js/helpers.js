@@ -65,9 +65,7 @@ export function buildContactHtml(data) {
 }
 
 function getSiteBase() {
-    const path = window.location.pathname;
-    const dir = path.substring(0, path.lastIndexOf('/') + 1);
-    return window.location.origin + dir;
+    return window.location.origin + '/';
 }
 
 function setMetaContent(id, content) {
