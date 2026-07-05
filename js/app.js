@@ -195,7 +195,7 @@ function renderArticleCard(data, id) {
 
 function renderReviewCard(data) {
     const serviceLine = data.serviceName ? `<span class="review-service">${escapeHtml(data.serviceName)}</span>` : '';
-    return `<div class="review-card content-in">${serviceLine}<h4>${escapeHtml(data.clientName)}</h4><p>"${escapeHtml(data.reviewText)}"</p></div>`;
+    return `<div class="review-card content-in">${serviceLine}<h3>${escapeHtml(data.clientName)}</h3><p>"${escapeHtml(data.reviewText)}"</p></div>`;
 }
 
 function fillQueryGrid(elId, snap, renderFn, emptyType) {
