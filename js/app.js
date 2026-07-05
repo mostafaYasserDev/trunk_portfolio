@@ -1,4 +1,4 @@
-import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc, startAfter, getDocsFromServer, getDocFromServer, onSnapshot } from '../firebase/public.js';
+import { db, collection, getDocs, query, where, limit, orderBy, doc, getDoc } from '../firebase/public.js';
 import {
     LOADER_HTML, skeletonCards, skeletonReviews, emptyState, showError, buildContactHtml,
     escapeHtml, updatePageMeta, PAGE_META, initReadingProgress, removeReadingProgress, buildAboutHtml
