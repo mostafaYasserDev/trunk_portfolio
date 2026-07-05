@@ -991,3 +991,152 @@ tbody tr:hover {
     font-size: 1.6rem;
   }
 }
+
+/* ======================================================
+   Quill Editor — RTL + Toolbar Styling + Inline Buttons
+   ====================================================== */
+
+/* Force RTL for the entire Quill editor area */
+.ql-container {
+  direction: rtl;
+  text-align: right;
+  font-family: 'Thmanyah', serif;
+  font-size: 1rem;
+  border-radius: 0 0 10px 10px !important;
+}
+
+.ql-editor {
+  direction: rtl;
+  text-align: right;
+  min-height: 220px;
+  line-height: 1.9;
+  padding: 16px 18px;
+  color: var(--admin-text);
+}
+
+.ql-editor.ql-blank::before {
+  right: 18px;
+  left: auto;
+  font-style: normal;
+  color: var(--admin-text-muted);
+  opacity: 0.7;
+}
+
+/* Toolbar styling — positioned correctly for RTL */
+.ql-toolbar.ql-snow {
+  direction: rtl;
+  text-align: right;
+  border-radius: 10px 10px 0 0 !important;
+  border-color: var(--admin-border) !important;
+  background: var(--admin-surface);
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.ql-toolbar.ql-snow .ql-formats {
+  margin-left: 0;
+  margin-right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-left: 1px solid var(--admin-border);
+  padding-left: 8px;
+  padding-right: 4px;
+}
+
+.ql-toolbar.ql-snow .ql-formats:last-child {
+  border-left: none;
+}
+
+.ql-toolbar.ql-snow button {
+  border-radius: 6px;
+  transition: background 0.15s;
+  color: var(--admin-text);
+}
+
+.ql-toolbar.ql-snow button:hover,
+.ql-toolbar.ql-snow button.ql-active {
+  background: var(--admin-accent-soft);
+  color: var(--admin-primary);
+}
+
+.ql-toolbar.ql-snow .ql-stroke {
+  stroke: var(--admin-text) !important;
+}
+
+.ql-toolbar.ql-snow .ql-fill {
+  fill: var(--admin-text) !important;
+}
+
+.ql-toolbar.ql-snow button.ql-active .ql-stroke,
+.ql-toolbar.ql-snow button:hover .ql-stroke {
+  stroke: var(--admin-primary) !important;
+}
+
+.ql-toolbar.ql-snow button.ql-active .ql-fill,
+.ql-toolbar.ql-snow button:hover .ql-fill {
+  fill: var(--admin-primary) !important;
+}
+
+.ql-container.ql-snow {
+  border-color: var(--admin-border) !important;
+}
+
+/* Custom toolbar buttons (🔗 زر and </> HTML) */
+#art-btn-cta, #art-btn-html,
+#proj-btn-cta, #proj-btn-html {
+  background: var(--admin-primary) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  cursor: pointer;
+  font-family: 'Thmanyah', serif;
+  transition: background 0.2s, transform 0.1s;
+  width: auto !important;
+  height: auto !important;
+}
+
+#art-btn-cta:hover, #art-btn-html:hover,
+#proj-btn-cta:hover, #proj-btn-html:hover {
+  background: var(--admin-primary-dark) !important;
+  transform: translateY(-1px);
+}
+
+#art-btn-html, #proj-btn-html {
+  background: var(--admin-text, #3E2723) !important;
+}
+
+/* ---- Inline CTA Buttons preview inside Quill editor ---- */
+.ql-editor .inline-btn,
+.ql-editor a.inline-btn {
+  display: inline-block !important;
+  padding: 9px 22px !important;
+  border-radius: 8px !important;
+  font-weight: bold !important;
+  text-decoration: none !important;
+  margin: 6px 2px !important;
+  font-size: 0.95rem !important;
+  cursor: pointer !important;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.14) !important;
+  line-height: 1.4 !important;
+  border: 2px solid transparent !important;
+}
+
+.ql-editor .inline-btn:hover,
+.ql-editor a.inline-btn:hover {
+  transform: translateY(-2px) !important;
+  text-decoration: none !important;
+}
+
+.ql-editor .inline-btn-primary   { background: #8C5A35 !important; color: #FAEDCD !important; border-color: #8C5A35 !important; }
+.ql-editor .inline-btn-secondary { background: #A3B18A !important; color: #3E2723 !important; border-color: #A3B18A !important; }
+.ql-editor .inline-btn-gold      { background: #D4A373 !important; color: #3E2723 !important; border-color: #D4A373 !important; }
+.ql-editor .inline-btn-dark      { background: #3E2723 !important; color: #FAEDCD !important; border-color: #3E2723 !important; }
+.ql-editor .inline-btn-green     { background: #4CAF50 !important; color: #fff    !important; border-color: #4CAF50 !important; }
