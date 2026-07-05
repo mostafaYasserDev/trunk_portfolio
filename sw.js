@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jidhe-v9';
+const CACHE_NAME = 'jidhe-v10';
 const ASSETS = [
     './',
     './index.html',
@@ -39,23 +39,25 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
     const url = new URL(e.request.url);
-    if (url.pathname.includes('/admin/') || url.pathname.includes('/client/')) {
-        return;
-    }
-    if (url.origin.includes('googleapis.com') || url.origin.includes('gstatic.com') ||
-        url.origin.includes('google-analytics.com') || url.origin.includes('googletagmanager.com') ||
-        url.origin.includes('unpkg.com') || url.origin.includes('cdnjs.cloudflare.com')) {
-        return;
-    }
+
+    // Skip non-same-origin requests (external CDNs, tracking pixels, APIs, etc.)
+    if (url.origin !== self.location.origin) return;
+
+    // Skip admin and client pages — always fetch fresh
+    if (url.pathname.startsWith('/admin/') || url.pathname.startsWith('/client/')) return;
+
+    // Skip Vercel serverless API routes — always fetch fresh
+    if (url.pathname.startsWith('/api/')) return;
+
     e.respondWith(
         caches.match(e.request).then(cached => {
             const fetched = fetch(e.request).then(response => {
-                if (response.ok && url.origin === self.location.origin) {
+                if (response.ok) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
                 }
                 return response;
-            }).catch(() => cached);
+            }).catch(() => cached || new Response('', { status: 503, statusText: 'Offline' }));
             return cached || fetched;
         })
     );
