@@ -39,7 +39,9 @@ module.exports = async (req, res) => {
         }
     }
     
-    if (image && !image.startsWith('http')) {
+    if (image && image.startsWith('data:image/')) {
+        image = `https://${req.headers.host || 'jidhe-trunk.web.app'}/api/image?type=${type}&id=${id}`;
+    } else if (image && !image.startsWith('http')) {
         image = `https://${req.headers.host || 'jidhe-trunk.web.app'}/${image.replace(/^\//, '')}`;
     }
 
