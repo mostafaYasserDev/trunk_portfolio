@@ -393,7 +393,7 @@ async function renderServices() {
         </div>
     `;
     try {
-        await fetchDocsLive(collection(db, 'services'), snap => {
+        await fetchDocsLive(query(collection(db, 'services')), snap => {
             const grid = document.getElementById('all-services-grid');
             if (!grid) return;
             if (snap.empty) { grid.innerHTML = emptyState('services'); return; }
@@ -441,45 +441,58 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
     const loadMoreBtn = document.getElementById('load-more-btn');
     let currentLimit = 6;
 
-    function attachListener() {
+    function renderSnap(snap) {
+        if (snap.empty) {
+            grid.innerHTML = emptyState(emptyType);
+            loadMoreBtn.style.display = 'none';
+            return;
+        }
+        let html = '';
+        const docs = snap.docs;
+        const hasMore = docs.length > currentLimit;
+        const displayDocs = hasMore ? docs.slice(0, currentLimit) : docs;
+        displayDocs.forEach(d => { html += renderCardFn(d.data(), d.id); });
+        grid.innerHTML = html;
+        loadMoreBtn.style.display = hasMore ? 'inline-block' : 'none';
+    }
+
+    function buildQuery() {
         const queries = [];
         if (orderQuery) queries.push(orderQuery);
         queries.push(limit(currentLimit + 1));
-        
-        getDocs(query(collection(db, collectionName), ...queries)).then(snap => {
-            if (snap.empty) {
-                grid.innerHTML = emptyState(emptyType);
-                loadMoreBtn.style.display = 'none';
-                return;
-            }
-            let html = '';
-            const docs = snap.docs;
-            const hasMore = docs.length > currentLimit;
-            const displayDocs = hasMore ? docs.slice(0, currentLimit) : docs;
-            
-            displayDocs.forEach(d => { html += renderCardFn(d.data(), d.id); });
-            grid.innerHTML = html;
-            
-            if (hasMore) loadMoreBtn.style.display = 'inline-block';
-            else loadMoreBtn.style.display = 'none';
-        }).catch(err => {
-            console.error(err);
-            grid.innerHTML = showError('تعذر الاتصال بقاعدة البيانات.');
-            loadMoreBtn.style.display = 'none';
-        });
+        return query(collection(db, collectionName), ...queries);
     }
-    
+
+    async function attachListener() {
+        const q = buildQuery();
+        try {
+            // Cache-first: serve from IndexedDB instantly
+            const cached = await getDocsFromCache(q);
+            renderSnap(cached);
+            // Background refresh from network (silent)
+            getDocs(q).then(fresh => { if (!fresh.metadata.fromCache) renderSnap(fresh); }).catch(() => {});
+        } catch {
+            // Nothing in cache — must go to network
+            getDocs(q).then(renderSnap).catch(err => {
+                console.error(err);
+                grid.innerHTML = showError('تعذر الاتصال بقاعدة البيانات.');
+                loadMoreBtn.style.display = 'none';
+            });
+        }
+    }
+
     grid.innerHTML = skeletonCards(3);
-    attachListener();
-    
+    await attachListener();
+
     const newBtn = loadMoreBtn.cloneNode(true);
     loadMoreBtn.parentNode.replaceChild(newBtn, loadMoreBtn);
-    
+
     newBtn.addEventListener('click', () => {
         currentLimit += 6;
         attachListener();
     });
 }
+
 
 async function renderProjectDetail(id) {
     if (!id) return router();
