@@ -7,6 +7,49 @@
     <title>إدارة المقالات - جذع</title>
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../vendor/quill/quill.snow.css">
+    <style>
+        /* === CTA Modal Styles === */
+        .cta-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.55); z-index: 9999;
+            align-items: center; justify-content: center;
+        }
+        .cta-modal-overlay.active { display: flex; }
+        .cta-modal {
+            background: var(--admin-card-bg, #fff);
+            border-radius: 16px; padding: 32px;
+            width: min(480px, 95vw);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalIn 0.25s ease;
+        }
+        @keyframes modalIn {
+            from { opacity:0; transform: scale(0.92) translateY(-10px); }
+            to   { opacity:1; transform: scale(1) translateY(0); }
+        }
+        .cta-modal h4 { margin: 0 0 20px; font-size: 1.2rem; }
+        .cta-modal .form-group { margin-bottom: 16px; }
+        .cta-modal label { display:block; margin-bottom:6px; font-weight:bold; font-size:0.9rem; }
+        .cta-modal input, .cta-modal textarea {
+            width:100%; padding:10px 14px; border-radius:8px;
+            border: 1.5px solid var(--admin-border,#ddd);
+            font-family:inherit; font-size:0.95rem;
+            background: var(--admin-input-bg,#f8f8f8);
+            color: inherit;
+        }
+        .cta-modal textarea { resize: vertical; min-height: 110px; font-family: monospace; font-size:0.88rem; }
+        .color-picker { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
+        .color-swatch {
+            width:36px; height:36px; border-radius:8px; cursor:pointer;
+            border:3px solid transparent; transition:transform 0.15s, border-color 0.15s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+        }
+        .color-swatch:hover { transform: scale(1.12); }
+        .color-swatch.selected { border-color: #fff; box-shadow: 0 0 0 3px #666; transform: scale(1.1); }
+        .cta-modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
+        /* Quill custom buttons */
+        .ql-btn-insert::after  { content: '🔗 زر'; font-size:12px; }
+        .ql-html-insert::after { content: '< > HTML'; font-size:12px; }
+    </style>
 </head>
 <body>
 
@@ -75,6 +118,52 @@
         </div>
     </main>
 
+    <!-- ===== CTA Button Modal ===== -->
+    <div class="cta-modal-overlay" id="cta-btn-modal">
+        <div class="cta-modal">
+            <h4>⚡ إدراج زر برابط</h4>
+            <div class="form-group">
+                <label>نص الزر</label>
+                <input type="text" id="cta-text" placeholder="مثال: اشترك الآن" maxlength="80">
+            </div>
+            <div class="form-group">
+                <label>الرابط (URL)</label>
+                <input type="url" id="cta-url" placeholder="https://" dir="ltr">
+            </div>
+            <div class="form-group">
+                <label>لون الزر</label>
+                <div class="color-picker" id="cta-color-picker">
+                    <div class="color-swatch selected" data-color="primary"   style="background:#8C5A35;" title="أساسي (بني)"></div>
+                    <div class="color-swatch"           data-color="secondary" style="background:#A3B18A;" title="ثانوي (أخضر مائل)"></div>
+                    <div class="color-swatch"           data-color="gold"      style="background:#D4A373;" title="ذهبي"></div>
+                    <div class="color-swatch"           data-color="dark"      style="background:#3E2723;" title="داكن"></div>
+                    <div class="color-swatch"           data-color="green"     style="background:#4CAF50;" title="أخضر"></div>
+                </div>
+            </div>
+            <div class="cta-modal-footer">
+                <button type="button" class="btn btn-danger" id="cta-cancel-btn">إلغاء</button>
+                <button type="button" class="btn" id="cta-insert-btn">إدراج الزر</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Custom HTML Modal ===== -->
+    <div class="cta-modal-overlay" id="html-block-modal">
+        <div class="cta-modal">
+            <h4>&lt;/&gt; إدراج كود HTML مخصص</h4>
+            <div class="form-group">
+                <label>كود HTML</label>
+                <textarea id="html-code-input" placeholder="&lt;iframe src=&quot;...&quot;&gt;&lt;/iframe&gt;
+&lt;div class=&quot;widget&quot;&gt;...&lt;/div&gt;
+&lt;script&gt;...&lt;/script&gt;"></textarea>
+            </div>
+            <div class="cta-modal-footer">
+                <button type="button" class="btn btn-danger" id="html-cancel-btn">إلغاء</button>
+                <button type="button" class="btn" id="html-insert-btn">إدراج الكود</button>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/admin.js"></script>
     <script src="../vendor/quill/quill.min.js"></script>
 
@@ -92,19 +181,112 @@
             document.getElementById('form-msg').textContent = 'تعذر تحميل محرر النصوص. حدّث الصفحة أو امسح الكاش.';
             document.getElementById('form-msg').className = 'msg error';
         }
+
+        // ── Quill toolbar container with custom buttons ──
+        const toolbarOptions = [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            ['link', 'image', 'video'],
+            ['clean'],
+            ['btn-insert', 'html-insert']  // custom buttons
+        ];
+
         var quill = typeof Quill !== 'undefined' ? new Quill('#editor-container', {
             theme: 'snow',
             placeholder: 'اكتب مقالك الرائع هنا...',
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['link', 'image', 'video'],
-                    ['clean']
-                ]
-            }
+            modules: { toolbar: { container: toolbarOptions } }
         }) : null;
+
+        // ── Wire up custom toolbar buttons ──
+        if (quill) {
+            const toolbar = quill.getModule('toolbar');
+            toolbar.addHandler('btn-insert',  () => openCtaModal());
+            toolbar.addHandler('html-insert', () => openHtmlModal());
+        }
+
+        // ═══════════════════ CTA BUTTON MODAL ═══════════════════
+        const ctaModal      = document.getElementById('cta-btn-modal');
+        const ctaTextInput  = document.getElementById('cta-text');
+        const ctaUrlInput   = document.getElementById('cta-url');
+        const ctaPicker     = document.getElementById('cta-color-picker');
+        let   selectedColor = 'primary';
+        let   ctaRange      = null; // cursor position when modal opened
+
+        ctaPicker.querySelectorAll('.color-swatch').forEach(sw => {
+            sw.addEventListener('click', () => {
+                ctaPicker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+                sw.classList.add('selected');
+                selectedColor = sw.dataset.color;
+            });
+        });
+
+        function openCtaModal() {
+            if (!quill) return;
+            ctaRange = quill.getSelection();
+            ctaTextInput.value = '';
+            ctaUrlInput.value  = '';
+            ctaModal.classList.add('active');
+            setTimeout(() => ctaTextInput.focus(), 80);
+        }
+
+        document.getElementById('cta-cancel-btn').addEventListener('click', () => {
+            ctaModal.classList.remove('active');
+        });
+
+        ctaModal.addEventListener('click', (e) => {
+            if (e.target === ctaModal) ctaModal.classList.remove('active');
+        });
+
+        document.getElementById('cta-insert-btn').addEventListener('click', () => {
+            const text  = ctaTextInput.value.trim();
+            const url   = ctaUrlInput.value.trim();
+            if (!text) { ctaTextInput.focus(); return; }
+            if (!url)  { ctaUrlInput.focus();  return; }
+
+            // Build the button HTML
+            const btnHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-btn inline-btn-${selectedColor}">${text}</a>`;
+
+            // Insert at cursor (or at end)
+            const idx = (ctaRange && ctaRange.index != null) ? ctaRange.index : quill.getLength();
+            quill.clipboard.dangerouslyPasteHTML(idx, btnHtml);
+            quill.setSelection(idx + btnHtml.length);
+
+            ctaModal.classList.remove('active');
+        });
+
+        // ═══════════════════ HTML BLOCK MODAL ═══════════════════
+        const htmlModal     = document.getElementById('html-block-modal');
+        const htmlCodeInput = document.getElementById('html-code-input');
+        let   htmlRange     = null;
+
+        function openHtmlModal() {
+            if (!quill) return;
+            htmlRange = quill.getSelection();
+            htmlCodeInput.value = '';
+            htmlModal.classList.add('active');
+            setTimeout(() => htmlCodeInput.focus(), 80);
+        }
+
+        document.getElementById('html-cancel-btn').addEventListener('click', () => {
+            htmlModal.classList.remove('active');
+        });
+
+        htmlModal.addEventListener('click', (e) => {
+            if (e.target === htmlModal) htmlModal.classList.remove('active');
+        });
+
+        document.getElementById('html-insert-btn').addEventListener('click', () => {
+            const code = htmlCodeInput.value.trim();
+            if (!code) { htmlCodeInput.focus(); return; }
+
+            const wrapped = `<div class="custom-html-block">${code}</div>`;
+            const idx = (htmlRange && htmlRange.index != null) ? htmlRange.index : quill.getLength();
+            quill.clipboard.dangerouslyPasteHTML(idx, wrapped);
+            quill.setSelection(idx + 2); // move cursor past block
+
+            htmlModal.classList.remove('active');
+        });
 
         // Form elements
         const form = document.getElementById('article-form');

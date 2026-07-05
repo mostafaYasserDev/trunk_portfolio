@@ -510,7 +510,7 @@ async function renderProjectDetail(id) {
                         </div>
                         ${data.mainImage ? `<img src="${escapeHtml(data.mainImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
                         <div class="detail-content">
-                            <p>${escapeHtml(data.fullDescription).replace(/\n/g, '<br>')}</p>
+                            <div>${data.fullDescription || ''}</div>
                             <div style="margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
                                 ${data.demoLink ? `<a href="${escapeHtml(data.demoLink)}" target="_blank" rel="noopener" class="btn">معاينة حية</a>` : ''}
                                 ${data.githubLink ? `<a href="${escapeHtml(data.githubLink)}" target="_blank" rel="noopener" class="btn" style="background:var(--text-main);">الكود المصدري</a>` : ''}

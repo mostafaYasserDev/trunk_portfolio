@@ -1328,3 +1328,47 @@ body.dark-mode .reviews-section {
   max-width: 400px;
   padding-bottom: 10px;
 }
+
+/* ===== Inline CTA Buttons (embedded inside article/project content) ===== */
+.inline-btn {
+  display: inline-block;
+  padding: 10px 26px;
+  border-radius: 10px;
+  font-weight: bold;
+  text-decoration: none;
+  margin: 8px 4px;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  line-height: 1.4;
+}
+
+.inline-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.2);
+  opacity: 0.92;
+  text-decoration: none;
+}
+
+.inline-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.inline-btn-primary   { background: #8C5A35; color: #FAEDCD !important; border: 2px solid #8C5A35; }
+.inline-btn-secondary { background: #A3B18A; color: #3E2723 !important; border: 2px solid #A3B18A; }
+.inline-btn-gold      { background: #D4A373; color: #3E2723 !important; border: 2px solid #D4A373; }
+.inline-btn-dark      { background: #3E2723; color: #FAEDCD !important; border: 2px solid #3E2723; }
+.inline-btn-green     { background: #4CAF50; color: #fff    !important; border: 2px solid #4CAF50; }
+
+body.dark-mode .inline-btn-primary   { background: #C58A5C; border-color: #C58A5C; color: #1A120E !important; }
+body.dark-mode .inline-btn-secondary { background: #4B5A3F; border-color: #4B5A3F; color: #FAEDCD !important; }
+body.dark-mode .inline-btn-gold      { background: #8C5A35; border-color: #8C5A35; color: #FAEDCD !important; }
+body.dark-mode .inline-btn-dark      { background: #FAEDCD; border-color: #FAEDCD; color: #1A120E !important; }
+body.dark-mode .inline-btn-green     { background: #388E3C; border-color: #388E3C; color: #fff    !important; }
+
+/* Custom HTML block wrapper in rich content */
+.custom-html-block { margin: 16px 0; width: 100%; }
+
