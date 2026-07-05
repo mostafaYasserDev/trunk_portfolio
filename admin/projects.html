@@ -224,12 +224,37 @@
         onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login.html'; });
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
+        // ── Register custom CTA Button blot (preserves classes on <a> tags) ──
+        const Inline = Quill.import('blots/inline');
+        class CTAButtonBlot extends Inline {
+            static create(value) {
+                const node = super.create();
+                node.setAttribute('href', value.href || '#');
+                node.setAttribute('target', '_blank');
+                node.setAttribute('rel', 'noopener noreferrer');
+                node.className = value.classes || 'inline-btn inline-btn-primary';
+                return node;
+            }
+            static formats(node) {
+                return { href: node.getAttribute('href'), classes: node.className };
+            }
+        }
+        CTAButtonBlot.blotName  = 'cta-button';
+        CTAButtonBlot.tagName   = 'A';
+        CTAButtonBlot.className = 'inline-btn';
+        Quill.register(CTAButtonBlot);
+
         // ── Quill Editor for fullDescription (custom HTML toolbar) ──
         const quillProj = new Quill('#proj-full-editor', {
             theme: 'snow',
             placeholder: 'صف المشروع بالتفصيل...',
             modules: { toolbar: '#proj-toolbar' }
         });
+
+        // ── Force RTL direction on the editor root ──
+        quillProj.root.setAttribute('dir', 'rtl');
+        quillProj.root.style.direction = 'rtl';
+        quillProj.root.style.textAlign = 'right';
 
         // ── Bind custom toolbar button clicks directly ──
         document.getElementById('proj-btn-cta').addEventListener('click', () => openCtaModal());
@@ -263,10 +288,12 @@
             const text = ctaTextInput.value.trim(), url = ctaUrlInput.value.trim();
             if (!text) { ctaTextInput.focus(); return; }
             if (!url)  { ctaUrlInput.focus();  return; }
-            const btnHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-btn inline-btn-${selectedColor}">${text}</a>`;
-            const idx = (ctaRange && ctaRange.index != null) ? ctaRange.index : quillProj.getLength();
-            quillProj.clipboard.dangerouslyPasteHTML(idx, btnHtml);
-            quillProj.setSelection(idx + btnHtml.length);
+            // Insert using custom blot — Quill preserves href + classes
+            const idx = (ctaRange && ctaRange.index != null) ? ctaRange.index : Math.max(0, quillProj.getLength() - 1);
+            quillProj.insertText(idx, text, {
+                'cta-button': { href: url, classes: `inline-btn inline-btn-${selectedColor}` }
+            });
+            quillProj.setSelection(idx + text.length + 1);
             ctaModal.classList.remove('active');
         });
 
