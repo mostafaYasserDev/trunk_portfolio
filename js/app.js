@@ -112,11 +112,7 @@ async function fetchDocBySlugOrIdLive(collectionName, identifier, callback) {
     }).catch(() => { if (!cacheFired) callback({ exists: () => false }); });
 }
 
-let activeListeners = [];
-function clearListeners() {
-    activeListeners.forEach(unsub => unsub());
-    activeListeners = [];
-}
+
 
 const appRoot = document.getElementById('app-root');
 const REVIEWS_LIMIT = 8;
@@ -177,7 +173,6 @@ function updateActiveNav(path) {
 }
 
 async function router() {
-    clearListeners();
     let hash = window.location.hash.slice(1);
     let path = 'home';
     let id = '';
