@@ -263,15 +263,21 @@
                 const donRef = collection(db, 'donations');
                 
                 // Try cache first
+                let cachedStr = null;
                 getDocsFromCache(donRef).then(cacheSnap => {
                     if (!cacheSnap.empty) {
+                        cachedStr = JSON.stringify(cacheSnap.docs.map(d => ({id: d.id, data: d.data()})));
                         renderDonations(cacheSnap);
                     }
                 }).catch(() => {});
 
                 // Then fetch from server
-                const serverSnap = await getDocs(donRef);
-                renderDonations(serverSnap);
+                getDocs(donRef).then(serverSnap => {
+                    if (!serverSnap.metadata.fromCache) {
+                        const serverStr = JSON.stringify(serverSnap.docs.map(d => ({id: d.id, data: d.data()})));
+                        if (cachedStr !== serverStr) renderDonations(serverSnap);
+                    }
+                });
 
             } catch (error) {
                 console.error("Error loading donations: ", error);

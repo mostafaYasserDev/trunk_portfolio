@@ -518,12 +518,19 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
 
     async function attachListener() {
         const q = buildQuery();
+        let cachedStr = null;
         try {
             // Cache-first: serve from IndexedDB instantly
             const cached = await getDocsFromCache(q);
+            cachedStr = JSON.stringify(cached.docs.map(d => ({id: d.id, data: d.data()})));
             renderSnap(cached);
             // Background refresh from network (silent)
-            getDocs(q).then(fresh => { if (!fresh.metadata.fromCache) renderSnap(fresh); }).catch(() => {});
+            getDocs(q).then(fresh => { 
+                if (!fresh.metadata.fromCache) {
+                    const freshStr = JSON.stringify(fresh.docs.map(d => ({id: d.id, data: d.data()})));
+                    if (cachedStr !== freshStr) renderSnap(fresh);
+                }
+            }).catch(() => {});
         } catch {
             // Nothing in cache — must go to network
             getDocs(q).then(renderSnap).catch(err => {
