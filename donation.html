@@ -244,11 +244,15 @@
                             const data = docSnap.data();
                             if(data.active !== false) {
                                 activeDonationsCount++;
+                                const iconHtml = data.icon && data.icon.startsWith('data:image')
+                                    ? `<img src="${data.icon}" class="donation-icon" style="width:50px; height:50px; object-fit:contain; border-radius:8px;" alt="${data.title}">`
+                                    : `<i class="${data.icon || 'fas fa-heart'} donation-icon"></i>`;
+                                    
                                 html += `
                                     <a href="${data.url}" target="_blank" rel="noopener noreferrer" class="donation-card glass-panel">
-                                        <i class="${data.icon || 'fas fa-heart'} donation-icon"></i>
+                                        ${iconHtml}
                                         <h3>${data.title}</h3>
-                                        <p>${data.description || ''}</p>
+                                        ${data.description ? `<p>${escapeHtml(data.description)}</p>` : ''}
                                         <span class="btn btn-outline" style="width: 100%;">دعم عبر ${data.title}</span>
                                     </a>
                                 `;
