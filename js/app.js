@@ -96,12 +96,9 @@ function applyContactSnap(snap) {
     applyContactHtml(html);
 }
 
-// Load contact info (cache-first)
-getDocFromCache(doc(db, 'settings', 'contact')).then(applyContactSnap).catch(() => {
-    // Not in cache, try network
-    getDoc(doc(db, 'settings', 'contact')).then(applyContactSnap).catch(() => {
-        applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>');
-    });
+// Load contact info live (cache + network refresh)
+fetchDocLive(doc(db, 'settings', 'contact'), applyContactSnap).catch(() => {
+    applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>');
 });
 
 const routes = {
@@ -269,9 +266,7 @@ function loadGeneralSettingsDeferred() {
     const load = () => {
         if (generalSettingsLoaded) return;
         generalSettingsLoaded = true;
-        getDocFromCache(doc(db, 'settings', 'general')).then(applyGeneralSettings).catch(() => {
-            getDoc(doc(db, 'settings', 'general')).then(applyGeneralSettings).catch(() => {});
-        });
+        fetchDocLive(doc(db, 'settings', 'general'), applyGeneralSettings).catch(() => {});
     };
 
     if ('IntersectionObserver' in window) {

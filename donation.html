@@ -183,12 +183,12 @@
             if (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 isDark = true;
             }
-            document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            if (isDark) document.body.classList.add('dark-mode');
             themeBtn.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
 
             themeBtn.addEventListener('click', () => {
                 isDark = !isDark;
-                document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                document.body.classList.toggle('dark-mode', isDark);
                 localStorage.setItem('theme', isDark ? 'dark' : 'light');
                 themeBtn.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
             });
@@ -215,11 +215,9 @@
                 const html = snap.exists() ? buildContactHtml(snap.data()) : '<p>معلومات التواصل غير متوفرة.</p>';
                 applyContactHtml(html);
             }
-            getDocFromCache(doc(db, 'settings', 'contact')).then(applyContactSnap).catch(() => {
-                getDoc(doc(db, 'settings', 'contact')).then(applyContactSnap).catch(() => {
-                    applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>');
-                });
-            });
+            const contactRef = doc(db, 'settings', 'contact');
+            getDocFromCache(contactRef).then(applyContactSnap).catch(() => {});
+            getDoc(contactRef).then(fresh => { if (!fresh.metadata.fromCache) applyContactSnap(fresh); }).catch(() => applyContactHtml('<p>تعذر تحميل معلومات التواصل.</p>'));
         });
 
         async function loadDonations() {
@@ -245,7 +243,7 @@
                             if(data.active !== false) {
                                 activeDonationsCount++;
                                 const iconHtml = data.icon && data.icon.startsWith('data:image')
-                                    ? `<img src="${data.icon}" class="donation-icon" style="width:50px; height:50px; object-fit:contain; border-radius:8px;" alt="${data.title}">`
+                                    ? `<div class="donation-icon" style="-webkit-mask-image: url('${data.icon}'); mask-image: url('${data.icon}'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: var(--primary); width:50px; height:50px; margin: 0 auto 15px auto; display:block;"></div>`
                                     : `<i class="${data.icon || 'fas fa-heart'} donation-icon"></i>`;
                                     
                                 html += `
