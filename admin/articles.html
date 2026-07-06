@@ -476,6 +476,7 @@
                 if(!window.articleDataMap) window.articleDataMap = {};
                 window.articleDataMap[id] = {
                     title: data.title,
+                    slug: data.slug || '',
                     shortDescription: data.shortDescription,
                     content: data.content,
                     coverImage: data.coverImage || ''
