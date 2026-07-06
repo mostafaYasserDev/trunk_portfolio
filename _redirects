@@ -4,9 +4,9 @@
 /admin      /admin/login     302
 
 # Fallback for Single Page App (SPA) dynamic routes
-/article/*  /index.html  200
-/project/*  /index.html  200
-/service/*  /index.html  200
-/articles   /index.html  200
-/projects   /index.html  200
-/services   /index.html  200
+/article/*  /?spa=true  200
+/project/*  /?spa=true  200
+/service/*  /?spa=true  200
+/articles   /?spa=true  200
+/projects   /?spa=true  200
+/services   /?spa=true  200
