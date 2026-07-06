@@ -55,14 +55,14 @@
     <aside class="sidebar">
         <div style="text-align: center; margin-bottom: 10px;"><img src="../assets/logo.png" alt="جذع" style="width: 50px;"></div>
         <h2>إدارة جذع</h2>
-        <a href="dashboard.html">لوحة التحكم</a>
-        <a href="articles.html">المقالات</a>
-        <a href="projects.html" class="active">المشاريع</a>
-        <a href="services.html">الخدمات</a>
-        <a href="reviews.html">آراء العملاء</a>
-        <a href="messages.html">صندوق الوارد</a>
-        <a href="donations.html">طرق الدعم</a>
-        <a href="settings.html">الإعدادات</a>
+        <a href="dashboard">لوحة التحكم</a>
+        <a href="articles">المقالات</a>
+        <a href="projects" class="active">المشاريع</a>
+        <a href="services">الخدمات</a>
+        <a href="reviews">آراء العملاء</a>
+        <a href="messages">صندوق الوارد</a>
+        <a href="donations">طرق الدعم</a>
+        <a href="settings">الإعدادات</a>
         <button id="logout-btn">تسجيل الخروج</button>
     </aside>
 
@@ -223,7 +223,7 @@
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
 
-        onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login.html'; });
+        onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login'; });
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
         // ── Register custom CTA Button blot (preserves classes on <a> tags) ──
@@ -245,6 +245,25 @@
         CTAButtonBlot.tagName   = 'A';
         CTAButtonBlot.className = 'inline-btn';
         Quill.register(CTAButtonBlot);
+
+        const BlockEmbed = Quill.import('blots/block/embed');
+        class CustomHtmlBlot extends BlockEmbed {
+            static create(value) {
+                const node = super.create();
+                node.setAttribute('srcdoc', value);
+                node.setAttribute('class', 'custom-html-iframe');
+                node.setAttribute('style', 'width: 100%; border: none; overflow: hidden; background: transparent; display: block; min-height: 200px;');
+                node.setAttribute('onload', "setTimeout(() => { try { this.style.height = (this.contentWindow.document.body.scrollHeight || this.contentWindow.document.documentElement.scrollHeight) + 50 + 'px'; } catch(err){} }, 500);");
+                return node;
+            }
+            static value(node) {
+                return node.getAttribute('srcdoc');
+            }
+        }
+        CustomHtmlBlot.blotName = 'custom-html';
+        CustomHtmlBlot.tagName = 'iframe';
+        CustomHtmlBlot.className = 'custom-html-iframe';
+        Quill.register(CustomHtmlBlot);
 
         // ── Quill Editor for fullDescription (custom HTML toolbar) ──
         const quillProj = new Quill('#proj-full-editor', {
@@ -377,12 +396,8 @@
                     code = injection + code;
                 }
 
-                const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                // Create an isolated iframe that auto-resizes itself
-                const wrapped = `<iframe class="custom-html-iframe" style="width: 100%; border: none; overflow: hidden; background: transparent; display: block; min-height: 200px;" srcdoc="${escapedCode}" onload="setTimeout(() => { try { this.style.height = (this.contentWindow.document.body.scrollHeight || this.contentWindow.document.documentElement.scrollHeight) + 50 + 'px'; } catch(err){} }, 500);"></iframe><p><br></p>`;
-                
                 const idx = (htmlRange && htmlRange.index != null) ? htmlRange.index : quillProj.getLength();
-                quillProj.clipboard.dangerouslyPasteHTML(idx, wrapped);
+                quillProj.insertEmbed(idx, 'custom-html', code);
                 quillProj.setSelection(idx + 1);
 
                 htmlModal.classList.remove('active');

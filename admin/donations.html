@@ -12,14 +12,14 @@
     <aside class="sidebar">
         <div style="text-align: center; margin-bottom: 10px;"><img src="../assets/logo.png" alt="جذع" style="width: 50px;"></div>
         <h2>إدارة جذع</h2>
-        <a href="dashboard.html">لوحة التحكم</a>
-        <a href="articles.html">المقالات</a>
-        <a href="projects.html">المشاريع</a>
-        <a href="services.html">الخدمات</a>
-        <a href="reviews.html">آراء العملاء</a>
-        <a href="messages.html">صندوق الوارد</a>
-        <a href="donations.html" class="active">طرق الدعم</a>
-        <a href="settings.html">الإعدادات</a>
+        <a href="dashboard">لوحة التحكم</a>
+        <a href="articles">المقالات</a>
+        <a href="projects">المشاريع</a>
+        <a href="services">الخدمات</a>
+        <a href="reviews">آراء العملاء</a>
+        <a href="messages">صندوق الوارد</a>
+        <a href="donations" class="active">طرق الدعم</a>
+        <a href="settings">الإعدادات</a>
         <button id="logout-btn">تسجيل الخروج</button>
     </aside>
 
@@ -85,7 +85,7 @@
         import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, onSnapshot, deleteDoc, doc } from '../firebase/firebase.js';
 
         onAuthStateChanged(auth, (user) => {
-            if (!user) window.location.href = 'login.html';
+            if (!user) window.location.href = 'login';
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));

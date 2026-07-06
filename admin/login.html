@@ -60,7 +60,7 @@
                 await import('../firebase/firebase.js');
 
             onAuthStateChanged(auth, (user) => {
-                if (user) window.location.href = 'dashboard.html';
+                if (user) window.location.href = 'dashboard';
             });
 
             const loginForm = document.getElementById('login-form');
