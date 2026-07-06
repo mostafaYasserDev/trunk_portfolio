@@ -533,11 +533,26 @@ html,body{background:var(--background,${isDark ? '#1A120E' : '#FAEDCD'}) !import
             }
 
             const iframe = document.createElement('iframe');
-            iframe.style.cssText = 'width:100%;border:none;display:block;min-height:300px;overflow:hidden;';
+            // يكسر الـ iframe حدود الـ container ليشعر بالاندماج الكامل مع الصفحة
+            iframe.style.cssText = [
+                'display:block',
+                'width:100vw',
+                'max-width:100vw',
+                'position:relative',
+                'right:50%',
+                'left:50%',
+                'margin-right:-50vw',
+                'margin-left:-50vw',
+                'border:none',
+                'min-height:400px',
+                'border-radius:0',
+                'overflow:hidden',
+                'margin-top:32px',
+                'margin-bottom:32px',
+            ].join(';');
             iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
             iframe.srcdoc = html;
             iframe.onload = () => {
-                // انتظر قليلاً ثم اضبط ارتفاع الـ iframe تلقائياً
                 const resize = () => {
                     try {
                         const doc = iframe.contentWindow.document;
@@ -545,11 +560,12 @@ html,body{background:var(--background,${isDark ? '#1A120E' : '#FAEDCD'}) !import
                             doc.documentElement.scrollHeight,
                             doc.body ? doc.body.scrollHeight : 0
                         );
-                        if (h > 50) iframe.style.height = (h + 30) + 'px';
+                        if (h > 50) iframe.style.height = (h + 40) + 'px';
                     } catch(e) {}
                 };
-                setTimeout(resize, 400);
-                setTimeout(resize, 1200); // محاولة ثانية بعد تحميل الصور والخطوط
+                setTimeout(resize, 300);
+                setTimeout(resize, 900);
+                setTimeout(resize, 2000); // للتأكد بعد تحميل الصور والخطوط
             };
             div.parentNode.replaceChild(iframe, div);
         } catch(e) { console.warn('custom-html-block decode error', e); }

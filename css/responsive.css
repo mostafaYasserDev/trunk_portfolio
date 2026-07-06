@@ -474,7 +474,7 @@ body {
   }
 
   .detail-content {
-    padding: 48px 56px;
+    padding: 40px 48px;
   }
 }
 
@@ -545,13 +545,10 @@ body {
     font-size: 2.5rem;
   }
 
-  /* Readable line length for long-form content */
+  /* Readable line length for long-form text content — لا نقيد عرض الـ iframe */
   .detail-content {
-    max-width: 920px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 56px 64px;
-    font-size: 1.2rem;
+    padding: 40px 48px;
+    font-size: 1.18rem;
   }
 
   .detail-header {
