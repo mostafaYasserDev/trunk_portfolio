@@ -57,6 +57,8 @@ export function initUI() {
             const isDark = document.body.classList.contains('dark-mode');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             themeIcon.classList.replace(isDark ? 'fa-moon' : 'fa-sun', isDark ? 'fa-sun' : 'fa-moon');
+            // إبلاغ بقية الموقع بتغيير الثيم (لتحديث الـ iframes لحظياً)
+            document.dispatchEvent(new CustomEvent('jidhe:themechange', { detail: { theme: isDark ? 'dark' : 'light' } }));
         });
     }
 

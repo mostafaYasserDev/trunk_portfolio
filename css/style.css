@@ -1179,16 +1179,10 @@ body:not(.aos-init) [data-aos] {
   display: block;
   width: calc(100% + 0px);
   border: none;
-  border-radius: 16px;
+  border-radius: 0;
   overflow: hidden;
   margin: 20px 0;
-  box-shadow: 0 8px 32px rgba(62,39,35,0.08);
   min-height: 300px;
-  transition: box-shadow 0.3s ease;
-}
-
-.detail-content > iframe:hover {
-  box-shadow: 0 12px 40px rgba(62,39,35,0.13);
 }
 
 .detail-content img {
