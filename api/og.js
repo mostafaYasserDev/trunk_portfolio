@@ -11,7 +11,8 @@ module.exports = async (req, res) => {
 
     // Handle Static Pages
     if (page) {
-        if (page === 'contact' || page === 'support') title = 'تواصل معي والدعم - جذع';
+        if (page === 'contact') title = 'تواصل معي - جذع';
+        else if (page === 'donation' || page === 'donations') title = 'الدعم - جذع';
         else if (page === 'articles') title = 'المقالات - جذع';
         else if (page === 'projects') title = 'المشاريع - جذع';
         else if (page === 'services') title = 'الخدمات - جذع';

@@ -43,8 +43,12 @@
       "destination": "/api/og?page=services"
     },
     {
-      "source": "/support",
-      "destination": "/api/og?page=support"
+      "source": "/donation",
+      "destination": "/api/og?page=donation"
+    },
+    {
+      "source": "/donations",
+      "destination": "/api/og?page=donation"
     },
     {
       "source": "/feedback",
