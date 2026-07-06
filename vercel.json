@@ -25,6 +25,30 @@
     {
       "source": "/service/:id",
       "destination": "/api/og?type=service&id=:id"
+    },
+    {
+      "source": "/contact",
+      "destination": "/api/og?page=contact"
+    },
+    {
+      "source": "/articles",
+      "destination": "/api/og?page=articles"
+    },
+    {
+      "source": "/projects",
+      "destination": "/api/og?page=projects"
+    },
+    {
+      "source": "/services",
+      "destination": "/api/og?page=services"
+    },
+    {
+      "source": "/support",
+      "destination": "/api/og?page=support"
+    },
+    {
+      "source": "/feedback",
+      "destination": "/api/og?page=feedback"
     }
   ],
   "headers": [

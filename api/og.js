@@ -2,12 +2,21 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = async (req, res) => {
-    const { type, id } = req.query;
+    const { type, id, page } = req.query;
     
     // Default meta tags
     let title = 'جذع - حكاية تنمو';
     let description = 'جذع - بورتفوليو شخصي. أروي حكايات برمجية بروح فنية ولمسة إبداعية.';
     let image = 'https://trunk-portfolio.vercel.app/assets/logo.png'; 
+
+    // Handle Static Pages
+    if (page) {
+        if (page === 'contact' || page === 'support') title = 'تواصل معي والدعم - جذع';
+        else if (page === 'articles') title = 'المقالات - جذع';
+        else if (page === 'projects') title = 'المشاريع - جذع';
+        else if (page === 'services') title = 'الخدمات - جذع';
+        else if (page === 'feedback') title = 'رأيك يهمنا - جذع';
+    }
     
     if (type && id) {
         let collection = '';
@@ -17,20 +26,55 @@ module.exports = async (req, res) => {
         
         if (collection) {
             try {
-                const firestoreUrl = `https://firestore.googleapis.com/v1/projects/jidhe-trunk/databases/(default)/documents/${collection}/${id}`;
-                const response = await fetch(firestoreUrl);
-                if (response.ok) {
-                    const data = await response.json();
-                    const fields = data.fields;
-                    if (fields) {
-                        title = fields.title?.stringValue ? `${fields.title.stringValue} - جذع` : title;
-                        
-                        if (type === 'article' || type === 'project') {
-                            description = fields.shortDescription?.stringValue || description;
-                            image = fields.coverImage?.stringValue || fields.mainImage?.stringValue || image;
-                        } else if (type === 'service') {
-                            description = fields.description?.stringValue || description;
-                        }
+                // Try fetching by Slug first using structuredQuery
+                const queryUrl = `https://firestore.googleapis.com/v1/projects/jidhe-trunk/databases/(default)/documents:runQuery`;
+                const queryBody = {
+                    structuredQuery: {
+                        from: [{ collectionId: collection }],
+                        where: {
+                            fieldFilter: {
+                                field: { fieldPath: "slug" },
+                                op: "EQUAL",
+                                value: { stringValue: id }
+                            }
+                        },
+                        limit: 1
+                    }
+                };
+                
+                let fields = null;
+                
+                const queryRes = await fetch(queryUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(queryBody)
+                });
+                
+                if (queryRes.ok) {
+                    const queryData = await queryRes.json();
+                    if (queryData && queryData.length > 0 && queryData[0].document) {
+                        fields = queryData[0].document.fields;
+                    }
+                }
+                
+                // Fallback to fetch by ID if Slug query didn't find anything
+                if (!fields) {
+                    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/jidhe-trunk/databases/(default)/documents/${collection}/${id}`;
+                    const response = await fetch(firestoreUrl);
+                    if (response.ok) {
+                        const data = await response.json();
+                        fields = data.fields;
+                    }
+                }
+                
+                if (fields) {
+                    title = fields.title?.stringValue ? `${fields.title.stringValue} - جذع` : title;
+                    
+                    if (type === 'article' || type === 'project') {
+                        description = fields.shortDescription?.stringValue || description;
+                        image = fields.coverImage?.stringValue || fields.mainImage?.stringValue || image;
+                    } else if (type === 'service') {
+                        description = fields.description?.stringValue || description;
                     }
                 }
             } catch (err) {
