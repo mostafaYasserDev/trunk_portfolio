@@ -1,12 +1,11 @@
-module.exports = async (req, res) => {
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'trunk-portfolio.vercel.app';
-    const baseUrl = `${protocol}://${host}`;
+export async function onRequest(context) {
+    const url = new URL(context.request.url);
+    const baseUrl = `${url.protocol}//${url.hostname}`;
 
     const fetchCollection = async (collectionName) => {
         try {
-            const url = `https://firestore.googleapis.com/v1/projects/jidhe-trunk/databases/(default)/documents/${collectionName}`;
-            const response = await fetch(url);
+            const firestoreUrl = `https://firestore.googleapis.com/v1/projects/jidhe-trunk/databases/(default)/documents/${collectionName}`;
+            const response = await fetch(firestoreUrl);
             if (!response.ok) return [];
             const data = await response.json();
             if (!data.documents) return [];
@@ -38,17 +37,14 @@ module.exports = async (req, res) => {
         docs.forEach(doc => {
             const fields = doc.fields || {};
             
-            // Skip hidden items if you have a 'visible' boolean (like in reviews or projects)
             if (fields.visible && fields.visible.booleanValue === false) return;
             if (fields.active && fields.active.booleanValue === false) return;
 
-            // Determine identifier (slug or ID)
-            let identifier = doc.name.split('/').pop(); // fallback to document ID
+            let identifier = doc.name.split('/').pop();
             if (fields.slug && fields.slug.stringValue) {
                 identifier = fields.slug.stringValue;
             }
 
-            // Determine last modified date
             let date = new Date().toISOString();
             if (fields.publishDate && fields.publishDate.stringValue) {
                 date = new Date(fields.publishDate.stringValue).toISOString();
@@ -68,7 +64,10 @@ module.exports = async (req, res) => {
 
     xml += `</urlset>`;
 
-    res.setHeader('Content-Type', 'text/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); // Cache for 1 day
-    res.status(200).send(xml);
-};
+    return new Response(xml, {
+        headers: {
+            "Content-Type": "text/xml; charset=utf-8",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate"
+        }
+    });
+}
