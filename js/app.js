@@ -33,6 +33,30 @@ async function fetchDocLive(ref, callback) {
     }
 }
 
+// Fetch by slug, fallback to document ID if not found
+async function fetchDocBySlugOrIdLive(collectionName, identifier, callback) {
+    const fallbackToId = async () => {
+        try {
+            await fetchDocLive(doc(db, collectionName, identifier), callback);
+        } catch (e) { callback({ exists: () => false }); }
+    };
+    try {
+        const q = query(collection(db, collectionName), where('slug', '==', identifier), limit(1));
+        await fetchDocsLive(q, (snapshot) => {
+            if (!snapshot.empty) {
+                // Mock a DocumentSnapshot for compatibility
+                const rawDoc = snapshot.docs[0];
+                const docSnap = { exists: () => true, data: () => rawDoc.data(), id: rawDoc.id };
+                callback(docSnap);
+            } else {
+                fallbackToId();
+            }
+        });
+    } catch (e) {
+        fallbackToId();
+    }
+}
+
 let activeListeners = [];
 function clearListeners() {
     activeListeners.forEach(unsub => unsub());
@@ -174,15 +198,15 @@ async function renderContact() {
 
 function renderServiceCard(data, id, compact = true) {
     const btnCls = compact ? 'btn btn-sm-card' : 'btn';
-    return `<div class="card content-in"><div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.description)}</p><a href="#service?id=${id}" class="${btnCls}">تفاصيل الخدمة</a></div></div>`;
+    return `<div class="card content-in"><div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.description)}</p><a href="#service?id=${escapeHtml(data.slug || id)}" class="${btnCls}">تفاصيل الخدمة</a></div></div>`;
 }
 
 function renderProjectCard(data, id) {
-    return `<div class="card content-in">${data.mainImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.mainImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#project?id=${id}" class="btn">عرض المشروع</a></div></div>`;
+    return `<div class="card content-in">${data.mainImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.mainImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#project?id=${escapeHtml(data.slug || id)}" class="btn">عرض المشروع</a></div></div>`;
 }
 
 function renderArticleCard(data, id) {
-    return `<div class="card content-in">${data.coverImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.coverImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#article?id=${id}" class="btn">اقرأ المزيد</a></div></div>`;
+    return `<div class="card content-in">${data.coverImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.coverImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#article?id=${escapeHtml(data.slug || id)}" class="btn">اقرأ المزيد</a></div></div>`;
 }
 
 function renderReviewCard(data) {
@@ -639,7 +663,7 @@ ${THEME_LISTENER_SCRIPT}`;
 async function renderProjectDetail(id) {
     if (!id) return router();
     try {
-        await fetchDocLive(doc(db, 'projects', id), docSnap => {
+        await fetchDocBySlugOrIdLive('projects', id, docSnap => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.mainImage });
@@ -682,7 +706,7 @@ async function renderProjectDetail(id) {
 async function renderArticleDetail(id) {
     if (!id) return router();
     try {
-        await fetchDocLive(doc(db, 'articles', id), docSnap => {
+        await fetchDocBySlugOrIdLive('articles', id, docSnap => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.coverImage });
@@ -719,7 +743,7 @@ async function renderArticleDetail(id) {
 async function renderServiceDetail(id) {
     if (!id) return router();
     try {
-        await fetchDocLive(doc(db, 'services', id), docSnap => {
+        await fetchDocBySlugOrIdLive('services', id, docSnap => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 updatePageMeta({ title: `${data.title} - جذع`, description: data.description || data.title });

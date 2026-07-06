@@ -80,6 +80,10 @@
                         <input type="text" id="proj-title" class="form-control" required>
                     </div>
                     <div class="form-group">
+                        <label for="proj-slug">الرابط الإنجليزي (Slug) - يجب أن يكون فريداً</label>
+                        <input type="text" id="proj-slug" class="form-control" placeholder="مثال: my-awesome-project" dir="ltr" required>
+                    </div>
+                    <div class="form-group">
                         <label for="proj-tech">التقنيات (مفصولة بفاصلة)</label>
                         <input type="text" id="proj-tech" class="form-control" placeholder="HTML, CSS, JS...">
                     </div>
@@ -221,7 +225,7 @@
     <script src="../js/admin.js"></script>
     <script src="../vendor/quill/quill.min.js"></script>
     <script type="module">
-        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs } from '../firebase/firebase.js';
 
         onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login'; });
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
@@ -410,6 +414,7 @@
         const form = document.getElementById('project-form');
         const idInput = document.getElementById('project-id');
         const titleInput = document.getElementById('proj-title');
+        const slugInput = document.getElementById('proj-slug');
         const techInput = document.getElementById('proj-tech');
         const shortInput = document.getElementById('proj-short');
         const fullInput = document.getElementById('proj-full');
@@ -457,7 +462,7 @@
                 const data = docSnap.data();
                 const id = docSnap.id;
                 const safeData = encodeURIComponent(JSON.stringify({
-                    id, title: data.title, technologies: data.technologies,
+                    id, title: data.title, slug: data.slug || '', technologies: data.technologies,
                     shortDescription: data.shortDescription, fullDescription: data.fullDescription,
                     demoLink: data.demoLink, githubLink: data.githubLink, featured: data.featured
                 }));
@@ -480,6 +485,7 @@
             const data = JSON.parse(decodeURIComponent(safeData));
             idInput.value = data.id;
             titleInput.value = data.title;
+            slugInput.value = data.slug || data.id;
             techInput.value = data.technologies || '';
             shortInput.value = data.shortDescription || '';
             // Load rich HTML into Quill editor
@@ -506,8 +512,21 @@
             if (confirm('هل أنت متأكد من حذف هذا المشروع؟')) await deleteDoc(doc(db, 'projects', id));
         };
 
+        // Sanitize Slug input automatically
+        slugInput.addEventListener('input', function() {
+            this.value = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+/, '');
+        });
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            let targetSlug = slugInput.value.replace(/-+$/, ''); // Remove trailing dash
+            if (!targetSlug) {
+                msgDiv.textContent = 'يُرجى إدخال الرابط (Slug).';
+                msgDiv.className = 'msg-error';
+                return;
+            }
+
             submitBtn.disabled = true;
             msgDiv.textContent = 'جاري الحفظ...';
             msgDiv.className = '';
@@ -525,8 +544,10 @@
                     submitBtn.disabled = false;
                     return;
                 }
+                
                 const projectData = {
                     title: titleInput.value.trim(),
+                    slug: targetSlug,
                     technologies: techInput.value.trim(),
                     shortDescription: shortInput.value.trim(),
                     fullDescription: htmlContent,
@@ -535,6 +556,20 @@
                     featured: featuredInput.checked,
                     mainImage
                 };
+
+                // Check Slug uniqueness
+                const slugQuery = query(collection(db, "projects"), where("slug", "==", targetSlug));
+                const slugSnapshot = await getDocs(slugQuery);
+                let isDuplicate = false;
+                slugSnapshot.forEach(docSnap => {
+                    if (docSnap.id !== idInput.value) isDuplicate = true; // If another doc has this slug
+                });
+
+                if (isDuplicate) {
+                    targetSlug = targetSlug + '-' + Date.now().toString().slice(-4);
+                    projectData.slug = targetSlug;
+                }
+
                 if (idInput.value) {
                     await updateDoc(doc(db, 'projects', idInput.value), projectData);
                     msgDiv.textContent = 'تم تحديث المشروع بنجاح!';

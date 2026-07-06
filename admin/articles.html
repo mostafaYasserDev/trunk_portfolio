@@ -79,6 +79,11 @@
                     <input type="text" id="art-title" class="form-control" required>
                 </div>
                 <div class="form-group">
+                    <label>الرابط الإنجليزي (Slug) - يجب أن يكون فريداً</label>
+                    <input type="text" id="art-slug" class="form-control" placeholder="مثال: my-new-article" dir="ltr" required>
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">يُستخدم في الرابط (SEO). الحروف الإنجليزية والأرقام وعلامة (-) فقط.</small>
+                </div>
+                <div class="form-group">
                     <label>وصف قصير</label>
                     <input type="text" id="art-desc" class="form-control" required>
                 </div>
@@ -197,7 +202,7 @@
     <script src="../vendor/quill/quill.min.js"></script>
 
     <script type="module">
-        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs } from '../firebase/firebase.js';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -412,7 +417,8 @@
         const form = document.getElementById('article-form');
         const idInput = document.getElementById('article-id');
         const titleInput = document.getElementById('art-title');
-        const descInput = document.getElementById('art-desc');
+        const slugInput = document.getElementById('art-slug');
+    const descInput = document.getElementById('art-desc');
         const imageInput = document.getElementById('art-image');
         const progressDiv = document.getElementById('upload-progress');
         const msgDiv = document.getElementById('form-msg');
@@ -495,6 +501,7 @@
             
             idInput.value = id;
             titleInput.value = data.title;
+            slugInput.value = data.slug || id;
             descInput.value = data.shortDescription;
             if (!quill) return;
             quill.root.innerHTML = data.content; // Load HTML into Quill
@@ -538,6 +545,13 @@
                 return;
             }
 
+            let targetSlug = slugInput.value.replace(/-+$/, '');
+            if (!targetSlug) {
+                msgDiv.textContent = 'يُرجى إدخال الرابط (Slug).';
+                msgDiv.style.color = 'red';
+                return;
+            }
+
             submitBtn.disabled = true;
             msgDiv.textContent = 'جاري الحفظ...';
             msgDiv.style.color = 'var(--admin-primary)';
@@ -555,6 +569,7 @@
 
                 const articleData = {
                     title: titleInput.value,
+                    slug: targetSlug,
                     shortDescription: descInput.value,
                     content: htmlContent, // Save as rich HTML
                     coverImage: coverImage,
@@ -563,6 +578,19 @@
                 
                 // Clean up undefined (Firebase doesn't like undefined)
                 if(!articleData.publishDate) delete articleData.publishDate;
+
+                // Check Slug uniqueness
+                const slugQuery = query(collection(db, "articles"), where("slug", "==", targetSlug));
+                const slugSnapshot = await getDocs(slugQuery);
+                let isDuplicate = false;
+                slugSnapshot.forEach(docSnap => {
+                    if (docSnap.id !== idInput.value) isDuplicate = true; // If another doc has this slug
+                });
+
+                if (isDuplicate) {
+                    targetSlug = targetSlug + '-' + Date.now().toString().slice(-4);
+                    articleData.slug = targetSlug;
+                }
 
                 if (idInput.value) {
                     // Update existing
