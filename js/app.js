@@ -493,6 +493,28 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
     });
 }
 
+// ── تحويل div.custom-html-block المخزنة كـ base64 إلى iframes حقيقية عند العرض ──
+function renderHtmlBlocks(container) {
+    container.querySelectorAll('div.custom-html-block[data-html-src]').forEach(div => {
+        try {
+            const html = decodeURIComponent(escape(atob(div.getAttribute('data-html-src'))));
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'width:100%; border:none; display:block; min-height:300px; overflow:hidden;';
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
+            iframe.srcdoc = html;
+            iframe.onload = () => {
+                setTimeout(() => {
+                    try {
+                        const h = iframe.contentWindow.document.documentElement.scrollHeight ||
+                                  iframe.contentWindow.document.body.scrollHeight;
+                        if (h > 50) iframe.style.height = h + 20 + 'px';
+                    } catch(e) {}
+                }, 500);
+            };
+            div.parentNode.replaceChild(iframe, div);
+        } catch(e) { console.warn('custom-html-block decode error', e); }
+    });
+}
 
 async function renderProjectDetail(id) {
     if (!id) return router();
@@ -526,12 +548,12 @@ async function renderProjectDetail(id) {
                 appRoot.querySelectorAll('a.inline-btn').forEach(a => {
                     a.setAttribute('target', '_blank');
                     a.setAttribute('rel', 'noopener noreferrer');
-                    // Ensure URL is absolute
                     const h = a.getAttribute('href') || '';
                     if (h && !/^https?:\/\//i.test(h) && !/^mailto:/i.test(h)) {
                         a.setAttribute('href', 'https://' + h);
                     }
                 });
+                renderHtmlBlocks(appRoot);
             } else appRoot.innerHTML = showError('المشروع غير موجود.');
         });
     } catch (e) { appRoot.innerHTML = showError('خطأ في تحميل المشروع.'); }
@@ -562,12 +584,12 @@ async function renderArticleDetail(id) {
                 appRoot.querySelectorAll('a.inline-btn').forEach(a => {
                     a.setAttribute('target', '_blank');
                     a.setAttribute('rel', 'noopener noreferrer');
-                    // Ensure URL is absolute
                     const h = a.getAttribute('href') || '';
                     if (h && !/^https?:\/\//i.test(h) && !/^mailto:/i.test(h)) {
                         a.setAttribute('href', 'https://' + h);
                     }
                 });
+                renderHtmlBlocks(appRoot);
                 initReadingProgress();
             } else appRoot.innerHTML = showError('المقال غير موجود.');
         });

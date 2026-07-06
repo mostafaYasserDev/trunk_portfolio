@@ -250,19 +250,19 @@
         class CustomHtmlBlot extends BlockEmbed {
             static create(value) {
                 const node = super.create();
-                node.setAttribute('srcdoc', value);
-                node.setAttribute('class', 'custom-html-iframe');
-                node.setAttribute('style', 'width: 100%; border: none; overflow: hidden; background: transparent; display: block; min-height: 200px;');
-                node.setAttribute('onload', "setTimeout(() => { try { this.style.height = (this.contentWindow.document.body.scrollHeight || this.contentWindow.document.documentElement.scrollHeight) + 50 + 'px'; } catch(err){} }, 500);");
+                node.setAttribute('data-html-src', btoa(unescape(encodeURIComponent(value))));
+                node.setAttribute('contenteditable', 'false');
+                node.style.cssText = 'display:block; border:2px dashed #8C5A35; border-radius:10px; padding:15px; margin:10px 0; background:rgba(140,90,53,0.05); text-align:center; cursor:default;';
+                node.innerHTML = '<span style="color:#8C5A35;font-weight:bold;">📄 محتوى HTML مُضمَّن — سيظهر للزوار كصفحة كاملة</span>';
                 return node;
             }
             static value(node) {
-                return node.getAttribute('srcdoc');
+                try { return decodeURIComponent(escape(atob(node.getAttribute('data-html-src') || ''))); } catch(e) { return ''; }
             }
         }
         CustomHtmlBlot.blotName = 'custom-html';
-        CustomHtmlBlot.tagName = 'iframe';
-        CustomHtmlBlot.className = 'custom-html-iframe';
+        CustomHtmlBlot.tagName = 'div';
+        CustomHtmlBlot.className = 'custom-html-block';
         Quill.register(CustomHtmlBlot);
 
         // ── Quill Editor for fullDescription (custom HTML toolbar) ──
@@ -377,23 +377,24 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 let code = e.target.result;
-                
-                // Inject libraries automatically
-                const injection = `
-<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-@font-face { font-family: 'Thmanyah'; src: url('./otf/thmanyahseriftext-Regular.otf') format('opentype'); font-weight: normal; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Thmanyah'; src: url('./otf/thmanyahseriftext-Medium.otf') format('opentype'); font-weight: 500; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Thmanyah'; src: url('./otf/thmanyahseriftext-Bold.otf') format('opentype'); font-weight: bold; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Thmanyah'; src: url('./otf/thmanyahseriftext-Black.otf') format('opentype'); font-weight: 900; font-style: normal; font-display: swap; }
-</style>
-`;
-                // Insert injection right after <head> or at the beginning if no <head>
-                if(code.toLowerCase().includes('<head>')) {
-                    code = code.replace(/<head>/i, '<head>' + injection);
+
+                const injection = [
+                    '<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">',
+                    '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">',
+                    '<style>',
+                    '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Regular.otf") format("opentype"); font-weight: normal; font-display: swap; }',
+                    '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }',
+                    '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Bold.otf") format("opentype"); font-weight: bold; font-display: swap; }',
+                    '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Black.otf") format("opentype"); font-weight: 900; font-display: swap; }',
+                    '</style>',
+                    '<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"><\/script>',
+                    '<script>document.addEventListener("DOMContentLoaded",()=>{if(window.AOS)AOS.init({once:true});});<\/script>'
+                ].join('\n');
+
+                if (code.toLowerCase().includes('<head>')) {
+                    code = code.replace(/<head>/i, '<head>\n' + injection);
                 } else {
-                    code = injection + code;
+                    code = injection + '\n' + code;
                 }
 
                 const idx = (htmlRange && htmlRange.index != null) ? htmlRange.index : quillProj.getLength();
