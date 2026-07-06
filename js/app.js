@@ -45,11 +45,32 @@ async function fetchDocLive(ref, callback) {
     }
 }
 
+// Deep equality helper to prevent redundant re-renders
+function deepEqual(obj1, obj2) {
+    if (obj1 === obj2) return true;
+    if (obj1 == null || obj2 == null || typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
+    const keys1 = Object.keys(obj1), keys2 = Object.keys(obj2);
+    if (keys1.length !== keys2.length) return false;
+    for (const key of keys1) {
+        const val1 = obj1[key], val2 = obj2[key];
+        if (val1 && val2 && val1.seconds !== undefined && val2.seconds !== undefined) {
+            if (val1.seconds !== val2.seconds || val1.nanoseconds !== val2.nanoseconds) return false;
+            continue;
+        }
+        if (typeof val1 === 'object' && typeof val2 === 'object') {
+            if (!deepEqual(val1, val2)) return false;
+        } else if (val1 !== val2) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // Fetch by slug, fallback to document ID if not found
 async function fetchDocBySlugOrIdLive(collectionName, identifier, callback) {
     const q = query(collection(db, collectionName), where('slug', '==', identifier), limit(1));
     const ref = doc(db, collectionName, identifier);
-    let cachedStr = null;
+    let cachedData = null;
     let cacheFired = false;
 
     // 1. Attempt Cache First
@@ -57,12 +78,12 @@ async function fetchDocBySlugOrIdLive(collectionName, identifier, callback) {
         const cachedSlug = await getDocsFromCache(q);
         if (!cachedSlug.empty) {
             const rawDoc = cachedSlug.docs[0];
-            cachedStr = JSON.stringify(rawDoc.data());
+            cachedData = rawDoc.data();
             cacheFired = true;
             callback({ exists: () => true, data: () => rawDoc.data(), id: rawDoc.id, metadata: { fromCache: true } });
         } else {
             const cachedId = await getDocFromCache(ref);
-            cachedStr = cachedId.exists() ? JSON.stringify(cachedId.data()) : null;
+            cachedData = cachedId.exists() ? cachedId.data() : null;
             cacheFired = true;
             callback(cachedId);
         }
@@ -75,15 +96,15 @@ async function fetchDocBySlugOrIdLive(collectionName, identifier, callback) {
         if (!freshSlug.metadata.fromCache) {
             if (!freshSlug.empty) {
                 const rawDoc = freshSlug.docs[0];
-                const freshStr = JSON.stringify(rawDoc.data());
-                if (cachedStr !== freshStr) {
+                const freshData = rawDoc.data();
+                if (!deepEqual(cachedData, freshData)) {
                     callback({ exists: () => true, data: () => rawDoc.data(), id: rawDoc.id, metadata: { fromCache: false } });
                 }
             } else {
                 getDoc(ref).then(freshId => {
                     if (!freshId.metadata.fromCache) {
-                        const freshStr = freshId.exists() ? JSON.stringify(freshId.data()) : null;
-                        if (cachedStr !== freshStr) callback(freshId);
+                        const freshData = freshId.exists() ? freshId.data() : null;
+                        if (!deepEqual(cachedData, freshData)) callback(freshId);
                     }
                 }).catch(() => { if (!cacheFired) callback({ exists: () => false }); });
             }
