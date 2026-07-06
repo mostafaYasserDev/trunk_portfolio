@@ -10,9 +10,15 @@ import { createSpamGuard, sanitizeText, isValidEmail } from './spam-guard.js';
 async function fetchDocsLive(q, callback) {
     try {
         const cached = await getDocsFromCache(q);
+        const cachedStr = JSON.stringify(cached.docs.map(d => ({id: d.id, data: d.data()})));
         callback(cached);
         // Background network refresh (silent, no await)
-        getDocs(q).then(fresh => { if (!fresh.metadata.fromCache) callback(fresh); }).catch(() => {});
+        getDocs(q).then(fresh => { 
+            if (!fresh.metadata.fromCache) {
+                const freshStr = JSON.stringify(fresh.docs.map(d => ({id: d.id, data: d.data()})));
+                if (cachedStr !== freshStr) callback(fresh);
+            }
+        }).catch(() => {});
         return cached;
     } catch {
         // Nothing in cache yet — must go to network
@@ -23,9 +29,15 @@ async function fetchDocsLive(q, callback) {
 async function fetchDocLive(ref, callback) {
     try {
         const cached = await getDocFromCache(ref);
+        const cachedStr = cached.exists() ? JSON.stringify(cached.data()) : null;
         callback(cached);
         // Background network refresh (silent, no await)
-        getDoc(ref).then(fresh => { if (!fresh.metadata.fromCache) callback(fresh); }).catch(() => {});
+        getDoc(ref).then(fresh => { 
+            if (!fresh.metadata.fromCache) {
+                const freshStr = fresh.exists() ? JSON.stringify(fresh.data()) : null;
+                if (cachedStr !== freshStr) callback(fresh);
+            }
+        }).catch(() => {});
         return cached;
     } catch {
         // Nothing in cache yet — must go to network
@@ -37,15 +49,21 @@ async function fetchDocLive(ref, callback) {
 async function fetchDocBySlugOrIdLive(collectionName, identifier, callback) {
     const q = query(collection(db, collectionName), where('slug', '==', identifier), limit(1));
     const ref = doc(db, collectionName, identifier);
+    let cachedStr = null;
+    let cacheFired = false;
 
     // 1. Attempt Cache First
     try {
         const cachedSlug = await getDocsFromCache(q);
         if (!cachedSlug.empty) {
             const rawDoc = cachedSlug.docs[0];
+            cachedStr = JSON.stringify(rawDoc.data());
+            cacheFired = true;
             callback({ exists: () => true, data: () => rawDoc.data(), id: rawDoc.id, metadata: { fromCache: true } });
         } else {
             const cachedId = await getDocFromCache(ref);
+            cachedStr = cachedId.exists() ? JSON.stringify(cachedId.data()) : null;
+            cacheFired = true;
             callback(cachedId);
         }
     } catch (e) {
@@ -57,14 +75,20 @@ async function fetchDocBySlugOrIdLive(collectionName, identifier, callback) {
         if (!freshSlug.metadata.fromCache) {
             if (!freshSlug.empty) {
                 const rawDoc = freshSlug.docs[0];
-                callback({ exists: () => true, data: () => rawDoc.data(), id: rawDoc.id, metadata: { fromCache: false } });
+                const freshStr = JSON.stringify(rawDoc.data());
+                if (cachedStr !== freshStr) {
+                    callback({ exists: () => true, data: () => rawDoc.data(), id: rawDoc.id, metadata: { fromCache: false } });
+                }
             } else {
                 getDoc(ref).then(freshId => {
-                    if (!freshId.metadata.fromCache) callback(freshId);
-                }).catch(() => callback({ exists: () => false }));
+                    if (!freshId.metadata.fromCache) {
+                        const freshStr = freshId.exists() ? JSON.stringify(freshId.data()) : null;
+                        if (cachedStr !== freshStr) callback(freshId);
+                    }
+                }).catch(() => { if (!cacheFired) callback({ exists: () => false }); });
             }
         }
-    }).catch(() => callback({ exists: () => false }));
+    }).catch(() => { if (!cacheFired) callback({ exists: () => false }); });
 }
 
 let activeListeners = [];
