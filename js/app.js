@@ -495,26 +495,67 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
 
 // ── تحويل div.custom-html-block المخزنة كـ base64 إلى iframes حقيقية عند العرض ──
 function renderHtmlBlocks(container) {
+    const isDark = document.body.classList.contains('dark-mode');
+    const origin = window.location.origin;
+
+    // CSS variables للوضع الداكن والفاتح — مطابقة لـ style.css بالكامل
+    const lightVars = `
+        --primary:#8C5A35; --primary-hover:#6c4222; --secondary:#D4A373;
+        --accent:#E9EDC9; --accent-dark:#A3B18A; --background:#FAEDCD;
+        --card-bg:#FEFAE0; --text-main:#3E2723; --text-muted:#6D4C41;
+        --border-color:#D4A373; --white:#FFFFFF;`;
+    const darkVars = `
+        --primary:#C58A5C; --primary-hover:#D4A373; --secondary:#8C5A35;
+        --accent:#4B5A3F; --accent-dark:#2F3A26; --background:#1A120E;
+        --card-bg:#2A1F1A; --text-main:#FAEDCD; --text-muted:#D4A373;
+        --border-color:#4A3525; --white:#2A1F1A;`;
+
+    // حقن الخطوط + المتغيرات اللونية في مقدمة الـ HTML قبل تحميله في الـ iframe
+    const headInjection = `
+<style>
+@font-face{font-family:'Thmanyah';src:url('${origin}/otf/thmanyahseriftext-Regular.otf') format('opentype');font-weight:normal;font-display:swap;}
+@font-face{font-family:'Thmanyah';src:url('${origin}/otf/thmanyahseriftext-Medium.otf') format('opentype');font-weight:500;font-display:swap;}
+@font-face{font-family:'Thmanyah';src:url('${origin}/otf/thmanyahseriftext-Bold.otf') format('opentype');font-weight:bold;font-display:swap;}
+@font-face{font-family:'Thmanyah';src:url('${origin}/otf/thmanyahseriftext-Black.otf') format('opentype');font-weight:900;font-display:swap;}
+:root{${isDark ? darkVars : lightVars}}
+html,body{background:var(--background,${isDark ? '#1A120E' : '#FAEDCD'}) !important;color:var(--text-main,${isDark ? '#FAEDCD' : '#3E2723'}) !important;}
+</style>`;
+
     container.querySelectorAll('div.custom-html-block[data-html-src]').forEach(div => {
         try {
-            const html = decodeURIComponent(escape(atob(div.getAttribute('data-html-src'))));
+            let html = decodeURIComponent(escape(atob(div.getAttribute('data-html-src'))));
+
+            // حقن الخطوط والألوان في أول <head> أو في بداية الـ HTML
+            if (html.toLowerCase().includes('<head>')) {
+                html = html.replace(/<head>/i, '<head>' + headInjection);
+            } else {
+                html = headInjection + html;
+            }
+
             const iframe = document.createElement('iframe');
-            iframe.style.cssText = 'width:100%; border:none; display:block; min-height:300px; overflow:hidden;';
+            iframe.style.cssText = 'width:100%;border:none;display:block;min-height:300px;overflow:hidden;';
             iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
             iframe.srcdoc = html;
             iframe.onload = () => {
-                setTimeout(() => {
+                // انتظر قليلاً ثم اضبط ارتفاع الـ iframe تلقائياً
+                const resize = () => {
                     try {
-                        const h = iframe.contentWindow.document.documentElement.scrollHeight ||
-                                  iframe.contentWindow.document.body.scrollHeight;
-                        if (h > 50) iframe.style.height = h + 20 + 'px';
+                        const doc = iframe.contentWindow.document;
+                        const h = Math.max(
+                            doc.documentElement.scrollHeight,
+                            doc.body ? doc.body.scrollHeight : 0
+                        );
+                        if (h > 50) iframe.style.height = (h + 30) + 'px';
                     } catch(e) {}
-                }, 500);
+                };
+                setTimeout(resize, 400);
+                setTimeout(resize, 1200); // محاولة ثانية بعد تحميل الصور والخطوط
             };
             div.parentNode.replaceChild(iframe, div);
         } catch(e) { console.warn('custom-html-block decode error', e); }
     });
 }
+
 
 async function renderProjectDetail(id) {
     if (!id) return router();
