@@ -664,7 +664,7 @@ ${THEME_LISTENER_SCRIPT}`;
                 'margin-top:32px',
                 'margin-bottom:32px',
             ].join(';');
-            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads');
             iframe.srcdoc = html;
 
             // تتبع الـ iframe لإرسال تحديثات الثيم لاحقاً
