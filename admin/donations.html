@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>إدارة طرق الدعم - جذع</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="text-align: center; margin-bottom: 10px;"><img src="../assets/logo.png" alt="جذع" style="width: 50px;"></div>
+        <h2>إدارة جذع</h2>
+        <a href="dashboard.html">لوحة التحكم</a>
+        <a href="articles.html">المقالات</a>
+        <a href="projects.html">المشاريع</a>
+        <a href="services.html">الخدمات</a>
+        <a href="reviews.html">آراء العملاء</a>
+        <a href="messages.html">صندوق الوارد</a>
+        <a href="donations.html" class="active">طرق الدعم</a>
+        <a href="settings.html">الإعدادات</a>
+        <button id="logout-btn">تسجيل الخروج</button>
+    </aside>
+
+    <main class="main-content">
+        <h1>إدارة طرق الدعم</h1>
+        
+        <div class="card">
+            <h3>إضافة طريقة دعم جديدة</h3>
+            <form id="add-donation-form">
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label>عنوان الطريقة (مثال: Patreon)</label>
+                        <input type="text" id="don-title" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>كود الأيقونة (من FontAwesome)</label>
+                        <input type="text" id="don-icon" class="form-control" placeholder="fab fa-patreon" dir="ltr" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>الرابط (URL)</label>
+                    <input type="url" id="don-url" class="form-control" placeholder="https://" dir="ltr" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>وصف قصير</label>
+                    <textarea id="don-desc" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="don-active" checked>
+                        تفعيل هذه الطريقة (تظهر للزوار)
+                    </label>
+                </div>
+                <button type="submit" class="btn">إضافة</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>طرق الدعم المتاحة</h3>
+            <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>الأيقونة</th>
+                        <th>العنوان</th>
+                        <th>الحالة</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="donations-list">
+                    <tr><td colspan="4" style="text-align: center;">جاري التحميل...</td></tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/admin.js"></script>
+    <script type="module">
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, onSnapshot, deleteDoc, doc } from '../firebase/firebase.js';
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = 'login.html';
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        // Real-time Load donations
+        onSnapshot(collection(db, "donations"), (snapshot) => {
+            const list = document.getElementById('donations-list');
+            list.innerHTML = '';
+            if (snapshot.empty) {
+                list.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد طرق دعم حالياً.</td></tr>';
+                return;
+            }
+            snapshot.forEach((documentSnap) => {
+                const data = documentSnap.data();
+                const isActive = data.active !== false;
+                list.innerHTML += `
+                    <tr>
+                        <td style="font-size: 1.5rem;"><i class="${data.icon}"></i></td>
+                        <td>${data.title}</td>
+                        <td>
+                            <label class="switch" style="cursor:pointer;">
+                                <input type="checkbox" onchange="toggleActive('${documentSnap.id}', this.checked)" ${isActive ? 'checked' : ''}>
+                                ${isActive ? 'مفعل' : 'معطل'}
+                            </label>
+                        </td>
+                        <td>
+                            <div class="table-actions">
+                                <a href="${data.url}" target="_blank" class="btn btn-sm" style="background:var(--admin-secondary);color:#fff;text-decoration:none;">تجربة الرابط</a>
+                                <button class="btn btn-danger btn-sm" onclick="deleteDonation('${documentSnap.id}')">حذف</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+
+        window.deleteDonation = async (id) => {
+            if(confirm('هل أنت متأكد من الحذف؟')) {
+                await deleteDoc(doc(db, "donations", id));
+            }
+        };
+
+        window.toggleActive = async (id, isActive) => {
+            await updateDoc(doc(db, "donations", id), { active: isActive });
+        };
+
+        // Add donation
+        document.getElementById('add-donation-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+
+            try {
+                await addDoc(collection(db, "donations"), {
+                    title: document.getElementById('don-title').value,
+                    icon: document.getElementById('don-icon').value,
+                    url: document.getElementById('don-url').value,
+                    description: document.getElementById('don-desc').value,
+                    active: document.getElementById('don-active').checked
+                });
+                document.getElementById('add-donation-form').reset();
+            } catch (err) {
+                console.error(err);
+                alert('حدث خطأ أثناء الإضافة');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>الصفحة غير موجودة - جذع</title>
+    <link rel="stylesheet" href="../css/admin.css">
+    <style>
+        .error-container {
+            text-align: center;
+            padding: 80px 20px;
+            background: var(--admin-card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            max-width: 600px;
+            margin: 40px auto;
+        }
+        .error-code {
+            font-size: 6rem;
+            font-weight: 900;
+            color: var(--admin-primary);
+            margin: 0;
+            line-height: 1;
+        }
+        .error-icon {
+            font-size: 4rem;
+            color: var(--admin-secondary);
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0); }
+        }
+        .error-message {
+            font-size: 1.5rem;
+            color: var(--admin-text);
+            margin: 20px 0;
+        }
+        .error-desc {
+            color: #666;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="text-align: center; margin-bottom: 10px;"><img src="../assets/logo.png" alt="جذع" style="width: 50px;"></div>
+        <h2>إدارة جذع</h2>
+        <a href="dashboard.html">لوحة التحكم</a>
+        <a href="articles.html">المقالات</a>
+        <a href="projects.html">المشاريع</a>
+        <a href="services.html">الخدمات</a>
+        <a href="reviews.html">آراء العملاء</a>
+        <a href="messages.html">صندوق الوارد</a>
+        <a href="donations.html">طرق الدعم</a>
+        <a href="settings.html">الإعدادات</a>
+        <button id="logout-btn">تسجيل الخروج</button>
+    </aside>
+
+    <main class="main-content">
+        <div class="error-container">
+            <i class="fas fa-ghost error-icon"></i>
+            <h1 class="error-code">404</h1>
+            <h2 class="error-message">يبدو أنك ضللت الطريق في لوحة التحكم!</h2>
+            <p class="error-desc">الصفحة التي تبحث عنها غير موجودة أو تم نقلها. لا تقلق، يمكنك العودة إلى لوحة التحكم من القائمة الجانبية.</p>
+            <a href="dashboard.html" class="btn" style="display: inline-block;">العودة للرئيسية</a>
+        </div>
+    </main>
+
+    <script src="../js/admin.js"></script>
+    <script type="module">
+        import { auth, onAuthStateChanged, signOut } from '../firebase/firebase.js';
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = 'login.html';
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+    </script>
+</body>
+</html>

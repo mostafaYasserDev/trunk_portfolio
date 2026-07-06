@@ -76,6 +76,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /donations/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /donation_suggestions/{docId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if true;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

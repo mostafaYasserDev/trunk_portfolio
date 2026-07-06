@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اقتراح وسيلة دعم - جذع</title>
+    <link rel="icon" href="../assets/logo.png" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <style>
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            min-height: 100vh;
+            background-color: var(--background); 
+            overflow-x: hidden;
+        }
+        .page-wrapper {
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .review-box {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            border: 1px solid var(--border-color);
+            box-sizing: border-box;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 10px; font-weight: bold; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 12px; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: inherit; box-sizing: border-box; font-size: 1rem;
+        }
+        .msg { margin-top: 15px; font-size: 1rem; text-align: center; font-weight: bold; }
+        .msg.success { color: var(--accent-dark); }
+        .msg.error { color: var(--danger); }
+        .thank-you-box {
+            text-align: center;
+            padding: 20px 0;
+            display: none;
+        }
+        .thank-you-box .emoji { font-size: 4rem; margin-bottom: 15px; }
+        .back-link { display: block; text-align: center; margin-top: 25px; font-weight: bold; }
+
+        @media (max-width: 600px) {
+            .page-wrapper { padding: 16px; }
+            .review-box { padding: 24px 20px; border-radius: 12px; }
+            .review-box .section-title { font-size: 1.3rem !important; }
+            .form-group input, .form-group textarea { font-size: 1rem; padding: 10px; }
+            .thank-you-box .emoji { font-size: 3rem; }
+            .back-link { margin-top: 18px; }
+            button.btn { font-size: 1rem; padding: 10px 12px; }
+        }
+
+        /* Ensure inputs don't cause zoom on iOS */
+        input, textarea, button { -webkit-appearance: none; }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <div class="review-box">
+            <div class="logo" style="text-align: center; margin-bottom: 20px;">جذع <span>.</span></div>
+
+            <div id="form-section">
+                <h2 class="section-title" style="font-size: 1.8rem; text-align: center; display: block;">اقتراح وسيلة دعم</h2>
+                <p style="text-align: center; color: var(--text-muted); margin-bottom: 30px;">نسعى دائماً لتوفير وسائل مناسبة للجميع. إذا كان لديك اقتراح لوسيلة دعم غير متوفرة، يسعدنا أن تخبرنا بها!</p>
+
+                <form id="suggestion-form">
+                    <div class="form-group">
+                        <label for="sugg-name">الاسم (اختياري)</label>
+                        <input type="text" id="sugg-name" placeholder="اسمك الكريم" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="sugg-message">وسيلة الدعم المقترحة / رسالتك</label>
+                        <textarea id="sugg-message" rows="5" placeholder="اكتب اقتراحك أو رسالتك هنا..." required maxlength="2000"></textarea>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">إرسال الاقتراح</button>
+                    <div id="status-msg" class="msg"></div>
+                </form>
+            </div>
+
+            <div id="thank-you" class="thank-you-box">
+                <div class="emoji">💖</div>
+                <h2 class="section-title" style="display: block; text-align: center;">شكراً لاقتراحك!</h2>
+                <p style="color: var(--text-muted); line-height: 1.9;">تم إرسال الاقتراح بنجاح. سنقوم بمراجعته ومحاولة إضافة وسيلة الدعم المقترحة في أقرب وقت.</p>
+                <a href="../donation.html" class="btn" style="margin-top: 20px;">العودة لصفحة الدعم</a>
+            </div>
+
+            <a href="../donation.html" class="back-link" id="back-link">← العودة لصفحة الدعم</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, collection, addDoc } from '../firebase/public.js';
+        import { createSpamGuard, sanitizeText } from '../js/spam-guard.js';
+
+        const form = document.getElementById('suggestion-form');
+        const spam = createSpamGuard('suggestion', {
+            cooldownMs: 120000,
+            maxLengths: { name: 100, message: 2000 }
+        });
+        spam.attachToForm(form);
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('status-msg');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            const payload = {
+                name: sanitizeText(document.getElementById('sugg-name').value, 100) || 'فاعل خير',
+                message: sanitizeText(document.getElementById('sugg-message').value, 2000)
+            };
+
+            const check = spam.validate(form, {
+                name: payload.name,
+                message: payload.message
+            });
+            if (!check.ok) {
+                msg.textContent = check.message;
+                msg.className = 'msg error';
+                return;
+            }
+            if (payload.message.length < 5) {
+                msg.textContent = 'الرسالة قصيرة جداً.';
+                msg.className = 'msg error';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'جاري الإرسال...';
+            msg.textContent = '';
+
+            try {
+                await addDoc(collection(db, 'donation_suggestions'), {
+                    name: payload.name,
+                    message: payload.message,
+                    date: new Date().toISOString(),
+                    read: false
+                });
+                spam.recordSubmit();
+                document.getElementById('form-section').style.display = 'none';
+                document.getElementById('back-link').style.display = 'none';
+                document.getElementById('thank-you').style.display = 'block';
+            } catch (error) {
+                msg.textContent = 'حدث خطأ أثناء الإرسال. حاول مرة أخرى.';
+                msg.className = 'msg error';
+                console.error(error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'إرسال الاقتراح';
+            }
+        });
+    </script>
+</body>
+</html>

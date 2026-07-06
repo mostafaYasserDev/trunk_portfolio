@@ -61,6 +61,7 @@
         <a href="services.html">الخدمات</a>
         <a href="reviews.html">آراء العملاء</a>
         <a href="messages.html">صندوق الوارد</a>
+        <a href="donations.html">طرق الدعم</a>
         <a href="settings.html">الإعدادات</a>
         <button id="logout-btn">تسجيل الخروج</button>
     </aside>
@@ -200,18 +201,19 @@
         </div>
     </div>
 
-    <!-- ===== Custom HTML Modal ===== -->
+    <!-- ===== Upload HTML Modal ===== -->
     <div class="cta-modal-overlay" id="html-block-modal">
         <div class="cta-modal" dir="rtl">
-            <h4>&lt;/&gt; إدراج كود HTML مخصص</h4>
+            <h4>📄 رفع ملف HTML مستقل</h4>
             <div class="form-group">
-                <label>كود HTML</label>
-                <textarea id="html-code-input" placeholder="&lt;iframe src=&quot;...&quot;&gt;&lt;/iframe&gt;
-&lt;div class=&quot;widget&quot;&gt;...&lt;/div&gt;"></textarea>
+                <div id="html-dropzone" style="border: 2px dashed var(--admin-primary); border-radius: 10px; padding: 40px 20px; text-align: center; cursor: pointer; background: var(--admin-input-bg); transition: background 0.3s;">
+                    <i class="fas fa-file-code fa-3x" style="color: var(--admin-primary); margin-bottom: 15px;"></i>
+                    <p style="margin: 0; font-weight: bold; color: var(--admin-text);">اضغط هنا لاختيار ملف HTML أو قم بسحبه وإفلاته هنا</p>
+                    <input type="file" id="html-file-input" accept=".html" style="display: none;">
+                </div>
             </div>
             <div class="cta-modal-footer">
                 <button type="button" class="btn btn-danger" id="html-cancel-btn">إلغاء</button>
-                <button type="button" class="btn" id="html-insert-btn">إدراج الكود</button>
             </div>
         </div>
     </div>
@@ -307,26 +309,87 @@
 
         // ═══════════════════ HTML BLOCK MODAL ═══════════════════
         const htmlModal     = document.getElementById('html-block-modal');
-        const htmlCodeInput = document.getElementById('html-code-input');
+        const dropzone      = document.getElementById('html-dropzone');
+        const fileInput     = document.getElementById('html-file-input');
         let   htmlRange     = null;
 
         function openHtmlModal() {
+            if (!quillProj) return;
             htmlRange = quillProj.getSelection();
-            htmlCodeInput.value = '';
             htmlModal.classList.add('active');
-            setTimeout(() => htmlCodeInput.focus(), 80);
         }
-        document.getElementById('html-cancel-btn').addEventListener('click', () => htmlModal.classList.remove('active'));
-        htmlModal.addEventListener('click', (e) => { if (e.target === htmlModal) htmlModal.classList.remove('active'); });
-        document.getElementById('html-insert-btn').addEventListener('click', () => {
-            const code = htmlCodeInput.value.trim();
-            if (!code) { htmlCodeInput.focus(); return; }
-            const wrapped = `<div class="custom-html-block">${code}</div>`;
-            const idx = (htmlRange && htmlRange.index != null) ? htmlRange.index : quillProj.getLength();
-            quillProj.clipboard.dangerouslyPasteHTML(idx, wrapped);
-            quillProj.setSelection(idx + 2);
+
+        document.getElementById('html-cancel-btn').addEventListener('click', () => {
             htmlModal.classList.remove('active');
         });
+
+        htmlModal.addEventListener('click', (e) => {
+            if (e.target === htmlModal) htmlModal.classList.remove('active');
+        });
+
+        // Drag and Drop Handlers
+        dropzone.addEventListener('click', () => fileInput.click());
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.style.background = 'rgba(140, 90, 53, 0.1)');
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.style.background = 'var(--admin-input-bg)');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            handleHtmlFile(e.dataTransfer.files[0]);
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) handleHtmlFile(this.files[0]);
+        });
+
+        function handleHtmlFile(file) {
+            if (!file || !file.name.endsWith('.html')) {
+                alert('الرجاء اختيار ملف HTML صالح.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let code = e.target.result;
+                
+                // Inject libraries automatically
+                const injection = `
+<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+@font-face { font-family: 'Thmanyah'; src: url('./otf/thmanyahseriftext-Regular.otf') format('opentype'); font-weight: normal; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('./otf/thmanyahseriftext-Medium.otf') format('opentype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('./otf/thmanyahseriftext-Bold.otf') format('opentype'); font-weight: bold; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah'; src: url('./otf/thmanyahseriftext-Black.otf') format('opentype'); font-weight: 900; font-style: normal; font-display: swap; }
+</style>
+`;
+                // Insert injection right after <head> or at the beginning if no <head>
+                if(code.toLowerCase().includes('<head>')) {
+                    code = code.replace(/<head>/i, '<head>' + injection);
+                } else {
+                    code = injection + code;
+                }
+
+                const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                // Create an isolated iframe that auto-resizes itself
+                const wrapped = `<iframe class="custom-html-iframe" style="width: 100%; border: none; overflow: hidden; background: transparent; display: block; min-height: 200px;" srcdoc="${escapedCode}" onload="setTimeout(() => { try { this.style.height = (this.contentWindow.document.body.scrollHeight || this.contentWindow.document.documentElement.scrollHeight) + 50 + 'px'; } catch(err){} }, 500);"></iframe><p><br></p>`;
+                
+                const idx = (htmlRange && htmlRange.index != null) ? htmlRange.index : quillProj.getLength();
+                quillProj.clipboard.dangerouslyPasteHTML(idx, wrapped);
+                quillProj.setSelection(idx + 1);
+
+                htmlModal.classList.remove('active');
+                fileInput.value = '';
+            };
+            reader.readAsText(file);
+        }
 
         const form = document.getElementById('project-form');
         const idInput = document.getElementById('project-id');
