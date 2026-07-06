@@ -1,4 +1,4 @@
 # لوحة التحكم وصفحات العملاء — ملفات ثابتة (أولوية قبل أي قاعدة)
-/admin/*    /admin/:splat    200!
-/client/*   /client/:splat   200!
+/admin/*    /admin/:splat    200
+/client/*   /client/:splat   200
 /admin      /admin/login     302
