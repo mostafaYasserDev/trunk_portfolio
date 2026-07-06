@@ -181,19 +181,39 @@
         </div>
     </div>
 
-    <!-- ===== Upload HTML Modal ===== -->
+    <!-- ===== Custom HTML Editor Modal ===== -->
     <div class="cta-modal-overlay" id="html-block-modal">
-        <div class="cta-modal" dir="rtl">
-            <h4>📄 رفع ملف HTML مستقل</h4>
-            <div class="form-group">
-                <div id="html-dropzone" style="border: 2px dashed var(--admin-primary); border-radius: 10px; padding: 40px 20px; text-align: center; cursor: pointer; background: var(--admin-input-bg); transition: background 0.3s;">
-                    <i class="fas fa-file-code fa-3x" style="color: var(--admin-primary); margin-bottom: 15px;"></i>
-                    <p style="margin: 0; font-weight: bold; color: var(--admin-text);">اضغط هنا لاختيار ملف HTML أو قم بسحبه وإفلاته هنا</p>
+        <div class="cta-modal" dir="rtl" style="width: min(900px, 95vw); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h4 style="margin: 0;">📄 محرر كود HTML المخصص</h4>
+                <div>
+                    <button type="button" class="btn btn-outline" id="html-upload-btn" style="padding: 5px 10px; font-size: 0.9rem;">
+                        <i class="fas fa-file-upload"></i> استيراد ملف
+                    </button>
                     <input type="file" id="html-file-input" accept=".html" style="display: none;">
                 </div>
             </div>
-            <div class="cta-modal-footer">
+            
+            <div class="form-grid-2">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="display: flex; justify-content: space-between;">
+                        <span>كود HTML</span>
+                    </label>
+                    <textarea id="html-code-input" style="height: 300px; font-family: monospace; direction: ltr; text-align: left; padding: 15px; background: #2d2d2d; color: #f8f8f2; border-radius: 8px; font-size: 0.9rem;" placeholder="<!-- اكتب كود HTML هنا -->"></textarea>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="display: flex; justify-content: space-between;">
+                        <span>المعاينة الحية</span>
+                        <button type="button" id="html-refresh-btn" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.8rem; background: var(--admin-text-muted);"><i class="fas fa-sync"></i> تحديث</button>
+                    </label>
+                    <iframe id="html-preview-frame" style="width: 100%; height: 300px; border: 1px solid var(--admin-border); border-radius: 8px; background: #fff;" sandbox="allow-scripts allow-same-origin"></iframe>
+                </div>
+            </div>
+
+            <div class="cta-modal-footer" style="margin-top: 20px;">
                 <button type="button" class="btn btn-danger" id="html-cancel-btn">إلغاء</button>
+                <button type="button" class="btn" id="html-insert-btn">إدراج في المقال</button>
             </div>
         </div>
     </div>
@@ -331,87 +351,102 @@
             ctaModal.classList.remove('active');
         });
 
-        // ═══════════════════ HTML BLOCK MODAL ═══════════════════
-        const htmlModal     = document.getElementById('html-block-modal');
-        const dropzone      = document.getElementById('html-dropzone');
-        const fileInput     = document.getElementById('html-file-input');
-        let   htmlRange     = null;
+        // ═══════════════════ HTML BLOCK MODAL (EDITOR) ═══════════════════
+        const htmlModal      = document.getElementById('html-block-modal');
+        const fileInput      = document.getElementById('html-file-input');
+        const htmlCodeInput  = document.getElementById('html-code-input');
+        const htmlPreview    = document.getElementById('html-preview-frame');
+        const uploadBtn      = document.getElementById('html-upload-btn');
+        const refreshBtn     = document.getElementById('html-refresh-btn');
+        const insertBtn      = document.getElementById('html-insert-btn');
+        const cancelBtnHtml  = document.getElementById('html-cancel-btn');
+        
+        let htmlRange      = null;
+        let activeHtmlBlot = null;
 
-        function openHtmlModal() {
+        function updateHtmlPreview() {
+            htmlPreview.srcdoc = htmlCodeInput.value;
+        }
+
+        function openHtmlModal(blot = null) {
             if (!quill) return;
-            htmlRange = quill.getSelection();
+            activeHtmlBlot = blot;
+            if (blot && typeof blot.statics.value === 'function') {
+                htmlCodeInput.value = blot.statics.value(blot.domNode);
+            } else {
+                htmlCodeInput.value = '';
+                htmlRange = quill.getSelection();
+            }
+            updateHtmlPreview();
             htmlModal.classList.add('active');
         }
 
-        document.getElementById('html-cancel-btn').addEventListener('click', () => {
-            htmlModal.classList.remove('active');
+        quill.root.addEventListener('click', (e) => {
+            const block = e.target.closest('.custom-html-block');
+            if (block) {
+                const blot = Quill.find(block);
+                if (blot) openHtmlModal(blot);
+            }
         });
 
-        htmlModal.addEventListener('click', (e) => {
-            if (e.target === htmlModal) htmlModal.classList.remove('active');
-        });
+        cancelBtnHtml.addEventListener('click', () => htmlModal.classList.remove('active'));
+        htmlModal.addEventListener('click', (e) => { if (e.target === htmlModal) htmlModal.classList.remove('active'); });
 
-        // Drag and Drop Handlers
-        dropzone.addEventListener('click', () => fileInput.click());
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        refreshBtn.addEventListener('click', updateHtmlPreview);
         
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropzone.addEventListener(eventName, () => dropzone.style.background = 'rgba(140, 90, 53, 0.1)');
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, () => dropzone.style.background = 'var(--admin-input-bg)');
-        });
-
-        dropzone.addEventListener('drop', (e) => {
-            handleHtmlFile(e.dataTransfer.files[0]);
+        let previewTimeout;
+        htmlCodeInput.addEventListener('input', () => {
+            clearTimeout(previewTimeout);
+            previewTimeout = setTimeout(updateHtmlPreview, 500);
         });
 
         fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) handleHtmlFile(this.files[0]);
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                if (!file.name.endsWith('.html')) { alert('الرجاء اختيار ملف HTML صالح.'); return; }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    let code = e.target.result;
+                    const injection = [
+                        '<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">',
+                        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">',
+                        '<style>',
+                        '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Regular.otf") format("opentype"); font-weight: normal; font-display: swap; }',
+                        '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }',
+                        '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Bold.otf") format("opentype"); font-weight: bold; font-display: swap; }',
+                        '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Black.otf") format("opentype"); font-weight: 900; font-display: swap; }',
+                        '</style>',
+                        '<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"><\/script>',
+                        '<script>document.addEventListener("DOMContentLoaded",()=>{if(window.AOS)AOS.init({once:true});});<\/script>'
+                    ].join('\n');
+
+                    if (code.toLowerCase().includes('<head>')) {
+                        code = code.replace(/<head>/i, '<head>\n' + injection);
+                    } else {
+                        code = injection + '\n' + code;
+                    }
+                    htmlCodeInput.value = code;
+                    updateHtmlPreview();
+                    fileInput.value = '';
+                };
+                reader.readAsText(file);
+            }
         });
 
-        function handleHtmlFile(file) {
-            if (!file || !file.name.endsWith('.html')) {
-                alert('الرجاء اختيار ملف HTML صالح.');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                let code = e.target.result;
-                
-                // Inject libraries automatically into the HTML file
-                const injection = [
-                    '<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">',
-                    '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">',
-                    '<style>',
-                    '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Regular.otf") format("opentype"); font-weight: normal; font-display: swap; }',
-                    '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }',
-                    '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Bold.otf") format("opentype"); font-weight: bold; font-display: swap; }',
-                    '@font-face { font-family: "Thmanyah"; src: url("https://jidhe.com/otf/thmanyahseriftext-Black.otf") format("opentype"); font-weight: 900; font-display: swap; }',
-                    '</style>',
-                    '<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"><\/script>',
-                    '<script>document.addEventListener("DOMContentLoaded",()=>{if(window.AOS)AOS.init({once:true});});<\/script>'
-                ].join('\n');
+        insertBtn.addEventListener('click', () => {
+            const code = htmlCodeInput.value.trim();
+            if (!code) { htmlModal.classList.remove('active'); return; }
 
-                if (code.toLowerCase().includes('<head>')) {
-                    code = code.replace(/<head>/i, '<head>\n' + injection);
-                } else {
-                    code = injection + '\n' + code;
-                }
-
+            if (activeHtmlBlot) {
+                activeHtmlBlot.domNode.setAttribute('data-html-src', btoa(unescape(encodeURIComponent(code))));
+            } else {
                 const idx = (htmlRange && htmlRange.index != null) ? htmlRange.index : quill.getLength();
                 quill.insertEmbed(idx, 'custom-html', code);
                 quill.setSelection(idx + 1);
-
-                htmlModal.classList.remove('active');
-                fileInput.value = '';
-            };
-            reader.readAsText(file);
-        }
+            }
+            htmlModal.classList.remove('active');
+        });
 
         // Form elements
         const form = document.getElementById('article-form');
