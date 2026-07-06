@@ -34,14 +34,13 @@ function formatTelegramUrl(value) {
 
 function normalizePrimaryField(data, key) {
     const visibleKey = `${key}Visible`;
-    const legacyUrl = data[key] || '';
     let url = '';
-    let visible = data[visibleKey] !== false;
+    let visible = true;
 
-    if (key === 'telegram') url = formatTelegramUrl(legacyUrl);
-    else url = String(legacyUrl || '').trim();
-
-    if (Array.isArray(data.socialLinks)) {
+    if (key in data) {
+        url = key === 'telegram' ? formatTelegramUrl(data[key]) : String(data[key] || '').trim();
+        visible = data[visibleKey] !== false;
+    } else if (Array.isArray(data.socialLinks)) {
         const fromList = data.socialLinks.find(l => l.preset === key && String(l.url || '').trim());
         if (fromList) {
             url = key === 'telegram' ? formatTelegramUrl(fromList.url) : String(fromList.url).trim();
