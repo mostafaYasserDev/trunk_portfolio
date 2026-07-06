@@ -28,15 +28,22 @@
         
         <div class="card">
             <h3>إضافة طريقة دعم جديدة</h3>
-            <form id="add-donation-form">
+                <input type="hidden" id="don-id">
                 <div class="form-grid-2">
                     <div class="form-group">
                         <label>عنوان الطريقة (مثال: Patreon)</label>
                         <input type="text" id="don-title" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label>كود الأيقونة (من FontAwesome)</label>
-                        <input type="text" id="don-icon" class="form-control" placeholder="fab fa-patreon" dir="ltr" required>
+                        <label>الأيقونة (كود FontAwesome أو رفع SVG/صورة)</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="text" id="don-icon" class="form-control" placeholder="fab fa-patreon" dir="ltr" style="flex:1;">
+                            <span style="color:var(--admin-text-muted);font-size:0.9rem;">أو</span>
+                            <input type="file" id="don-image" accept="image/*,.svg" style="max-width:200px; font-size:0.8rem;">
+                            <div id="don-preview" style="width:40px; height:40px; border:1px solid var(--admin-border); border-radius:5px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--admin-card-bg);">
+                                <i class="fas fa-image" style="color:var(--admin-text-muted);"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -56,7 +63,10 @@
                         تفعيل هذه الطريقة (تظهر للزوار)
                     </label>
                 </div>
-                <button type="submit" class="btn">إضافة</button>
+                <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+                    <button type="submit" class="btn" id="submit-btn">حفظ طريقة الدعم</button>
+                    <button type="button" class="btn btn-danger" id="cancel-btn" style="display: none;">إلغاء التعديل</button>
+                </div>
             </form>
         </div>
 
@@ -98,23 +108,35 @@
                 list.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد طرق دعم حالياً.</td></tr>';
                 return;
             }
+            list.innerHTML = '';
+            // Store data for editing
+            if (!window.donationsData) window.donationsData = {};
+
             snapshot.forEach((documentSnap) => {
                 const data = documentSnap.data();
+                const id = documentSnap.id;
                 const isActive = data.active !== false;
+                window.donationsData[id] = data;
+
+                const iconHtml = data.icon && data.icon.startsWith('data:image') 
+                    ? `<img src="${data.icon}" style="width:30px;height:30px;object-fit:contain;">` 
+                    : `<i class="${data.icon || 'fas fa-link'}"></i>`;
+
                 list.innerHTML += `
                     <tr>
-                        <td style="font-size: 1.5rem;"><i class="${data.icon}"></i></td>
+                        <td style="font-size: 1.5rem; text-align:center;">${iconHtml}</td>
                         <td>${data.title}</td>
                         <td>
                             <label class="switch" style="cursor:pointer;">
-                                <input type="checkbox" onchange="toggleActive('${documentSnap.id}', this.checked)" ${isActive ? 'checked' : ''}>
+                                <input type="checkbox" onchange="toggleActive('${id}', this.checked)" ${isActive ? 'checked' : ''}>
                                 ${isActive ? 'مفعل' : 'معطل'}
                             </label>
                         </td>
                         <td>
                             <div class="table-actions">
-                                <a href="${data.url}" target="_blank" class="btn btn-sm" style="background:var(--admin-secondary);color:#fff;text-decoration:none;">تجربة الرابط</a>
-                                <button class="btn btn-danger btn-sm" onclick="deleteDonation('${documentSnap.id}')">حذف</button>
+                                <a href="${data.url}" target="_blank" class="btn btn-sm">تجربة الرابط</a>
+                                <button class="btn btn-sm" onclick="editDonation('${id}')">تعديل</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteDonation('${id}')">حذف</button>
                             </div>
                         </td>
                     </tr>
@@ -132,24 +154,101 @@
             await updateDoc(doc(db, "donations", id), { active: isActive });
         };
 
-        // Add donation
-        document.getElementById('add-donation-form').addEventListener('submit', async (e) => {
+        const form = document.getElementById('add-donation-form');
+        const idInput = document.getElementById('don-id');
+        const titleInput = document.getElementById('don-title');
+        const iconInput = document.getElementById('don-icon');
+        const imageInput = document.getElementById('don-image');
+        const previewDiv = document.getElementById('don-preview');
+        const urlInput = document.getElementById('don-url');
+        const descInput = document.getElementById('don-desc');
+        const activeInput = document.getElementById('don-active');
+        const submitBtn = document.getElementById('submit-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        let currentImageBase64 = '';
+
+        // Live preview for icon class
+        iconInput.addEventListener('input', () => {
+            if (iconInput.value) previewDiv.innerHTML = `<i class="${iconInput.value}"></i>`;
+            else previewDiv.innerHTML = `<i class="fas fa-image" style="color:#ccc;"></i>`;
+        });
+
+        // Live preview and compression for image/SVG upload
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                currentImageBase64 = event.target.result;
+                iconInput.value = ''; // clear text if image uploaded
+                previewDiv.innerHTML = `<img src="${currentImageBase64}" style="width:100%;height:100%;object-fit:contain;">`;
+            };
+        });
+
+        window.editDonation = (id) => {
+            const data = window.donationsData[id];
+            if (!data) return;
+            idInput.value = id;
+            titleInput.value = data.title;
+            urlInput.value = data.url;
+            descInput.value = data.description || '';
+            activeInput.checked = data.active !== false;
+            
+            if (data.icon && data.icon.startsWith('data:image')) {
+                currentImageBase64 = data.icon;
+                iconInput.value = '';
+                previewDiv.innerHTML = `<img src="${data.icon}" style="width:100%;height:100%;object-fit:contain;">`;
+            } else {
+                currentImageBase64 = '';
+                iconInput.value = data.icon || '';
+                previewDiv.innerHTML = data.icon ? `<i class="${data.icon}"></i>` : `<i class="fas fa-image" style="color:#ccc;"></i>`;
+            }
+
+            submitBtn.textContent = 'تحديث الطريقة';
+            cancelBtn.style.display = 'inline-flex';
+            document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        cancelBtn.addEventListener('click', () => {
+            idInput.value = '';
+            currentImageBase64 = '';
+            previewDiv.innerHTML = `<i class="fas fa-image" style="color:#ccc;"></i>`;
+            submitBtn.textContent = 'حفظ طريقة الدعم';
+            cancelBtn.style.display = 'none';
+            form.reset();
+        });
+
+        // Add / Update donation
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const submitBtn = e.target.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
 
+            const finalIcon = currentImageBase64 ? currentImageBase64 : iconInput.value;
+            if (!finalIcon) {
+                alert('يُرجى إدخال كود الأيقونة أو رفع صورة.');
+                submitBtn.disabled = false;
+                return;
+            }
+
             try {
-                await addDoc(collection(db, "donations"), {
-                    title: document.getElementById('don-title').value,
-                    icon: document.getElementById('don-icon').value,
-                    url: document.getElementById('don-url').value,
-                    description: document.getElementById('don-desc').value,
-                    active: document.getElementById('don-active').checked
-                });
-                document.getElementById('add-donation-form').reset();
+                const docData = {
+                    title: titleInput.value.trim(),
+                    icon: finalIcon,
+                    url: urlInput.value.trim(),
+                    description: descInput.value.trim(),
+                    active: activeInput.checked
+                };
+
+                if (idInput.value) {
+                    await updateDoc(doc(db, "donations", idInput.value), docData);
+                } else {
+                    await addDoc(collection(db, "donations"), docData);
+                }
+                cancelBtn.click(); // Reset form
             } catch (err) {
                 console.error(err);
-                alert('حدث خطأ أثناء الإضافة');
+                alert('حدث خطأ أثناء الحفظ');
             } finally {
                 submitBtn.disabled = false;
             }
