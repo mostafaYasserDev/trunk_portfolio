@@ -35,26 +35,36 @@ async function fetchDocLive(ref, callback) {
 
 // Fetch by slug, fallback to document ID if not found
 async function fetchDocBySlugOrIdLive(collectionName, identifier, callback) {
-    const fallbackToId = async () => {
-        try {
-            await fetchDocLive(doc(db, collectionName, identifier), callback);
-        } catch (e) { callback({ exists: () => false }); }
-    };
+    const q = query(collection(db, collectionName), where('slug', '==', identifier), limit(1));
+    const ref = doc(db, collectionName, identifier);
+
+    // 1. Attempt Cache First
     try {
-        const q = query(collection(db, collectionName), where('slug', '==', identifier), limit(1));
-        await fetchDocsLive(q, (snapshot) => {
-            if (!snapshot.empty) {
-                // Mock a DocumentSnapshot for compatibility
-                const rawDoc = snapshot.docs[0];
-                const docSnap = { exists: () => true, data: () => rawDoc.data(), id: rawDoc.id };
-                callback(docSnap);
-            } else {
-                fallbackToId();
-            }
-        });
+        const cachedSlug = await getDocsFromCache(q);
+        if (!cachedSlug.empty) {
+            const rawDoc = cachedSlug.docs[0];
+            callback({ exists: () => true, data: () => rawDoc.data(), id: rawDoc.id, metadata: { fromCache: true } });
+        } else {
+            const cachedId = await getDocFromCache(ref);
+            callback(cachedId);
+        }
     } catch (e) {
-        fallbackToId();
+        // Ignore cache miss
     }
+
+    // 2. Network Fetch
+    getDocs(q).then(freshSlug => {
+        if (!freshSlug.metadata.fromCache) {
+            if (!freshSlug.empty) {
+                const rawDoc = freshSlug.docs[0];
+                callback({ exists: () => true, data: () => rawDoc.data(), id: rawDoc.id, metadata: { fromCache: false } });
+            } else {
+                getDoc(ref).then(freshId => {
+                    if (!freshId.metadata.fromCache) callback(freshId);
+                }).catch(() => callback({ exists: () => false }));
+            }
+        }
+    }).catch(() => callback({ exists: () => false }));
 }
 
 let activeListeners = [];
