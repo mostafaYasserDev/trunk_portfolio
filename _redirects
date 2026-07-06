@@ -2,3 +2,6 @@
 /admin/*    /admin/:splat    200
 /client/*   /client/:splat   200
 /admin      /admin/login     302
+
+# Fallback for Single Page App (SPA) so direct links work
+/*          /index.html      200
