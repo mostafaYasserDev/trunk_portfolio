@@ -274,7 +274,11 @@
                     const preview = document.getElementById('about-preview');
                     preview.src = currentAboutImage;
                     preview.style.display = 'block';
-                    document.getElementById('remove-about-btn').style.display = 'inline-block';
+                    const btn = document.getElementById('remove-about-btn');
+                    btn.style.display = 'inline-block';
+                    btn.textContent = 'حذف الصورة';
+                    btn.className = 'btn btn-danger btn-sm';
+                    btn.disabled = false;
                 }
             } else {
                 document.getElementById('about-text').value = DEFAULT_ABOUT_TEXT;
@@ -293,7 +297,11 @@
             removeAbout = true;
             currentAboutImage = '';
             document.getElementById('about-preview').style.display = 'none';
-            document.getElementById('remove-about-btn').style.display = 'none';
+            document.getElementById('about-image').value = '';
+            const btn = document.getElementById('remove-about-btn');
+            btn.textContent = 'سيتم حذف الصورة عند الحفظ بالأسفل';
+            btn.className = 'btn btn-outline btn-sm';
+            btn.disabled = true;
         });
 
         document.getElementById('general-form').addEventListener('submit', async (e) => {
@@ -355,7 +363,13 @@
                     const preview = document.getElementById('about-preview');
                     preview.src = aboutImage;
                     preview.style.display = 'block';
-                    document.getElementById('remove-about-btn').style.display = 'inline-block';
+                    const btn = document.getElementById('remove-about-btn');
+                    btn.style.display = 'inline-block';
+                    btn.textContent = 'حذف الصورة';
+                    btn.className = 'btn btn-danger btn-sm';
+                    btn.disabled = false;
+                } else {
+                    document.getElementById('remove-about-btn').style.display = 'none';
                 }
 
                 document.getElementById('cv-file').value = '';
