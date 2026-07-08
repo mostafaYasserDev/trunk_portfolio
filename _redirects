@@ -3,16 +3,15 @@
 /client/*   /client/:splat   200
 /admin      /admin/login     302
 
-# الصفحات الديناميكية — يجب أن ترى المسار الأصلي حتى يعمل الـ middleware
-# الـ middleware في Cloudflare Pages يعمل على المسار الأصلي قبل أي redirect
-# لذا نُعيد index.html مع الحفاظ على المسار الأصلي (200 rewrite)
-/article/*  /index.html  200
-/project/*  /index.html  200
-/service/*  /index.html  200
+# Fallback for Single Page App (SPA) dynamic routes
+# باستخدام /?spa=true لتجنب حدوث Infinite Loop مع Cloudflare Pages
+/article/*  /?spa=true  200
+/project/*  /?spa=true  200
+/service/*  /?spa=true  200
 
 # صفحات Listing - SPA
-/articles   /index.html  200
-/projects   /index.html  200
-/services   /index.html  200
-/contact    /index.html  200
+/articles   /?spa=true  200
+/projects   /?spa=true  200
+/services   /?spa=true  200
+/contact    /?spa=true  200
 /donation   /donation.html  200
