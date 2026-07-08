@@ -1,5 +1,5 @@
 async function test() {
-    const res = await fetch('http://127.0.0.1:8788/article/download-al_ribat-app');
+    const res = await fetch('https://mostafayasser.online/article/invalid-slug-abcdefg-123');
     console.log('Status:', res.status);
     console.log('Headers:');
     for (const [key, val] of res.headers.entries()) {
