@@ -45,7 +45,13 @@ export async function onRequest(context) {
     }
 
     const response = await context.next();
-    if (!docFields) return response; // If not found, return generic HTML
+    const newResponse = new Response(response.body, response);
+    if (!docFields) {
+        newResponse.headers.set('X-Debug-Status', 'docFields-null');
+        newResponse.headers.set('X-Debug-Id', encodeURIComponent(idOrSlug));
+        return newResponse; // If not found, return generic HTML
+    }
+    newResponse.headers.set('X-Debug-Status', 'docFields-found');
 
     const getVal = (key) => docFields[key] ? (docFields[key].stringValue || docFields[key].integerValue || docFields[key].booleanValue || '') : '';
     
