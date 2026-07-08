@@ -1,10 +1,11 @@
 export async function onRequest(context) {
     const url = new URL(context.request.url);
     const baseUrl = `${url.protocol}//${url.hostname}`;
+    const now = new Date().toISOString();
 
     const fetchCollection = async (collectionName) => {
         try {
-            const firestoreUrl = `https://firestore.googleapis.com/v1/projects/jidhe-trunk/databases/(default)/documents/${collectionName}`;
+            const firestoreUrl = `https://firestore.googleapis.com/v1/projects/jidhe-trunk/databases/(default)/documents/${collectionName}?pageSize=200`;
             const response = await fetch(firestoreUrl);
             if (!response.ok) return [];
             const data = await response.json();
@@ -22,21 +23,34 @@ export async function onRequest(context) {
         fetchCollection('services')
     ]);
 
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-    
-    // Static Pages
-    xml += `    <url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n`;
-    xml += `    <url><loc>${baseUrl}/services</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n`;
-    xml += `    <url><loc>${baseUrl}/projects</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n`;
-    xml += `    <url><loc>${baseUrl}/articles</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n`;
-    xml += `    <url><loc>${baseUrl}/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>\n`;
-    xml += `    <url><loc>${baseUrl}/donation</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>\n`;
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
+    xml += `        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n`;
+
+    // Static Pages with lastmod
+    const staticPages = [
+        { path: '/', changefreq: 'daily', priority: '1.0' },
+        { path: '/services', changefreq: 'weekly', priority: '0.8' },
+        { path: '/projects', changefreq: 'weekly', priority: '0.8' },
+        { path: '/articles', changefreq: 'weekly', priority: '0.8' },
+        { path: '/donation', changefreq: 'monthly', priority: '0.5' },
+    ];
+
+    staticPages.forEach(page => {
+        xml += `    <url>\n`;
+        xml += `        <loc>${baseUrl}${page.path}</loc>\n`;
+        xml += `        <lastmod>${now.split('T')[0]}</lastmod>\n`;
+        xml += `        <changefreq>${page.changefreq}</changefreq>\n`;
+        xml += `        <priority>${page.priority}</priority>\n`;
+        xml += `    </url>\n`;
+    });
 
     // Dynamic Pages
     const processDocs = (docs, pathPrefix) => {
         docs.forEach(doc => {
             const fields = doc.fields || {};
-            
+
+            // Skip invisible/inactive items
             if (fields.visible && fields.visible.booleanValue === false) return;
             if (fields.active && fields.active.booleanValue === false) return;
 
@@ -45,16 +59,38 @@ export async function onRequest(context) {
                 identifier = fields.slug.stringValue;
             }
 
-            let date = new Date().toISOString();
+            let date = now.split('T')[0];
             if (fields.publishDate && fields.publishDate.stringValue) {
-                date = new Date(fields.publishDate.stringValue).toISOString();
+                try { date = new Date(fields.publishDate.stringValue).toISOString().split('T')[0]; } catch(e){}
             } else if (fields.date && fields.date.stringValue) {
-                date = new Date(fields.date.stringValue).toISOString();
+                try { date = new Date(fields.date.stringValue).toISOString().split('T')[0]; } catch(e){}
+            } else if (doc.updateTime) {
+                try { date = new Date(doc.updateTime).toISOString().split('T')[0]; } catch(e){}
             } else if (doc.createTime) {
-                date = new Date(doc.createTime).toISOString();
+                try { date = new Date(doc.createTime).toISOString().split('T')[0]; } catch(e){}
             }
 
-            xml += `    <url>\n        <loc>${baseUrl}/${pathPrefix}/${encodeURIComponent(identifier)}</loc>\n        <lastmod>${date}</lastmod>\n        <changefreq>weekly</changefreq>\n        <priority>0.7</priority>\n    </url>\n`;
+            // Get image if available
+            const coverImage = (fields.coverImage && fields.coverImage.stringValue) ||
+                               (fields.mainImage && fields.mainImage.stringValue) ||
+                               (fields.image && fields.image.stringValue) || '';
+            const title = (fields.title && fields.title.stringValue) ||
+                          (fields.name && fields.name.stringValue) || '';
+
+            xml += `    <url>\n`;
+            xml += `        <loc>${baseUrl}/${pathPrefix}/${encodeURIComponent(identifier)}</loc>\n`;
+            xml += `        <lastmod>${date}</lastmod>\n`;
+            xml += `        <changefreq>weekly</changefreq>\n`;
+            xml += `        <priority>0.7</priority>\n`;
+
+            if (coverImage && title) {
+                xml += `        <image:image>\n`;
+                xml += `            <image:loc>${coverImage.startsWith('http') ? coverImage : `${baseUrl}${coverImage}`}</image:loc>\n`;
+                xml += `            <image:title>${title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</image:title>\n`;
+                xml += `        </image:image>\n`;
+            }
+
+            xml += `    </url>\n`;
         });
     };
 
@@ -66,8 +102,9 @@ export async function onRequest(context) {
 
     return new Response(xml, {
         headers: {
-            "Content-Type": "text/xml; charset=utf-8",
-            "Cache-Control": "s-maxage=86400, stale-while-revalidate"
+            'Content-Type': 'text/xml; charset=utf-8',
+            'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+            'X-Robots-Tag': 'noindex'
         }
     });
 }
