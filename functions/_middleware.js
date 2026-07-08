@@ -210,28 +210,27 @@ export async function onRequest(context) {
     `;
 
     // Use HTMLRewriter to remove old generic tags and inject new dynamic ones
-    return new HTMLRewriter()
-        // Remove old title and generic meta tags
-        .on('title', { element(el) { el.remove(); } })
-        .on('link[rel="canonical"]', { element(el) { el.remove(); } })
-        .on('#meta-description', { element(el) { el.remove(); } })
-        .on('#og-title', { element(el) { el.remove(); } })
-        .on('#og-description', { element(el) { el.remove(); } })
-        .on('#og-image', { element(el) { el.remove(); } })
-        .on('#og-url', { element(el) { el.remove(); } })
-        .on('#twitter-title', { element(el) { el.remove(); } })
-        .on('#twitter-description', { element(el) { el.remove(); } })
-        .on('#twitter-image', { element(el) { el.remove(); } })
-        .on('[property="og:type"]', { element(el) { el.remove(); } })
-        .on('[property="og:locale"]', { element(el) { el.remove(); } })
-        .on('[name="twitter:card"]', { element(el) { el.remove(); } })
-        // Remove existing JSON-LD from head (will be replaced)
-        .on('script[type="application/ld+json"]', { element(el) { el.remove(); } })
-        // Inject all new tags at end of <head>
-        .on('head', {
-            element(el) {
-                el.append(tagsToInject, { html: true });
-            }
-        })
-        .transform(response);
+    try {
+        return new HTMLRewriter()
+            .on('title', { element(el) { el.remove(); } })
+            .on('link[rel="canonical"]', { element(el) { el.remove(); } })
+            .on('#meta-description', { element(el) { el.remove(); } })
+            .on('#og-title', { element(el) { el.remove(); } })
+            .on('#og-description', { element(el) { el.remove(); } })
+            .on('#og-image', { element(el) { el.remove(); } })
+            .on('#og-url', { element(el) { el.remove(); } })
+            .on('#twitter-title', { element(el) { el.remove(); } })
+            .on('#twitter-description', { element(el) { el.remove(); } })
+            .on('#twitter-image', { element(el) { el.remove(); } })
+            .on('[property="og:type"]', { element(el) { el.remove(); } })
+            .on('[property="og:locale"]', { element(el) { el.remove(); } })
+            .on('[name="twitter:card"]', { element(el) { el.remove(); } })
+            .on('script[type="application/ld+json"]', { element(el) { el.remove(); } })
+            .on('head', { element(el) { el.append(tagsToInject, { html: true }); } })
+            .transform(response);
+    } catch (rewriterError) {
+        const errResp = new Response(response.body, response);
+        errResp.headers.set('X-SEO-Error', rewriterError.message);
+        return errResp;
+    }
 }
