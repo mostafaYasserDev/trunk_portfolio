@@ -23,6 +23,7 @@ export async function onRequest(context) {
     // Fetch data from Firestore with timeout
     let docFields = null;
     let fetchMethod = 'none';
+    let actualDocId = idOrSlug;
 
     try {
         const controller = new AbortController();
@@ -54,6 +55,9 @@ export async function onRequest(context) {
                 if (Array.isArray(queryData) && queryData[0] && queryData[0].document) {
                     docFields = queryData[0].document.fields;
                     fetchMethod = 'slug-query';
+                    if (queryData[0].document.name) {
+                        actualDocId = queryData[0].document.name.split('/').pop();
+                    }
                 }
             }
         } catch (slugErr) {
@@ -127,8 +131,13 @@ export async function onRequest(context) {
     const siteUrl = `${url.protocol}//${url.hostname}`;
     const canonicalUrl = `${siteUrl}${path}`;
     const siteName = 'جذع';
-    const defaultImage = `${siteUrl}/assets/logo.png`;
-    const finalImage = image || defaultImage;
+    
+    let finalImage = image;
+    if (image && image.startsWith('data:image')) {
+        finalImage = `${siteUrl}/img/${collectionName}/${actualDocId}.jpg`;
+    } else if (!image) {
+        finalImage = `${siteUrl}/assets/logo.png`;
+    }
 
     // Truncate description to 160 chars max for SEO
     const shortDescription = description.length > 160
