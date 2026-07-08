@@ -59,8 +59,11 @@ export async function onRequest(context) {
     }
 
     const title = getVal('title');
-    const description = getVal('shortDescription') || title;
-    const image = getVal('coverImage') || getVal('mainImage');
+    const description = getVal('description') || getVal('shortDescription') || title;
+    let image = getVal('coverImage') || getVal('mainImage');
+    if (image && image.startsWith('/')) {
+        image = `${url.protocol}//${url.hostname}${image}`;
+    }
     const datePublished = getVal('publishDate') || getVal('date');
 
     const canonicalUrl = `${url.protocol}//${url.hostname}${path}`;
