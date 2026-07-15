@@ -73,11 +73,49 @@ function setMetaContent(id, content) {
     if (el) el.setAttribute('content', content);
 }
 
-export function updatePageMeta({ title, description, image } = {}) {
+function canonicalUrl(url) {
+    if (url) return url;
+    const current = new URL(window.location.href);
+    current.hash = '';
+    return current.href;
+}
+
+function updateCanonical(url) {
+    let link = document.querySelector('link[rel="canonical"]');
+    if (!link) {
+        link = document.createElement('link');
+        link.rel = 'canonical';
+        document.head.appendChild(link);
+    }
+    link.href = url;
+    setMetaContent('og-url', url);
+}
+
+function updateDynamicJsonLd(meta, url) {
+    let script = document.querySelector('script[data-dynamic-seo]');
+    if (!script) {
+        script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.dataset.dynamicSeo = 'true';
+        document.head.appendChild(script);
+    }
+    script.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: meta.title,
+        description: meta.description,
+        url,
+        image: meta.image,
+        inLanguage: 'ar'
+    });
+}
+
+export function updatePageMeta({ title, description, image, url } = {}) {
     const meta = {
         title: title || DEFAULT_META.title,
         description: description || DEFAULT_META.description,
-        image: image || `${getSiteBase()}assets/logo.png`
+        image: image || `${getSiteBase()}assets/logo.png`,
+        url: canonicalUrl(url)
     };
     document.title = meta.title;
     setMetaContent('meta-description', meta.description);
@@ -87,6 +125,8 @@ export function updatePageMeta({ title, description, image } = {}) {
     setMetaContent('twitter-title', meta.title);
     setMetaContent('twitter-description', meta.description);
     setMetaContent('twitter-image', meta.image);
+    updateCanonical(meta.url);
+    updateDynamicJsonLd(meta, meta.url);
 }
 
 export const PAGE_META = {

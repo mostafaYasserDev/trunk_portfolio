@@ -108,7 +108,7 @@
                             <div class="form-group">
                                 <label>السيرة الذاتية (PDF)</label>
                                 <input type="file" id="cv-file" class="form-control" accept=".pdf,application/pdf">
-                                <p class="hint">الحد الأقصى: 800 كيلوبايت</p>
+                                <p class="hint">الحد الأقصى: 450 كيلوبايت للحفاظ على حد مستند Firestore.</p>
                                 <div id="cv-status" class="cv-status">لم يتم رفع ملف بعد.</div>
                             </div>
                             <button type="button" id="remove-cv-btn" class="btn btn-danger btn-sm" style="display:none; margin-top: 5px;">حذف السيرة الذاتية</button>
@@ -135,8 +135,10 @@
         import { translateFirebaseError } from '../js/admin-ui.js';
         import { normalizeContactSocial, DEFAULT_ABOUT_TEXT } from '../js/social.js';
         import { initExtraSocialLinksManager, getExtraSocialLinksFromManager } from '../js/admin-settings.js';
+        import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizePlainText, isValidEmail } from '../js/security.js';
 
-        const MAX_CV_SIZE = 800 * 1024;
+        const MAX_CV_SIZE = 450 * 1024;
+        const MAX_ENCODED_MEDIA_SIZE = 550 * 1024;
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -200,12 +202,18 @@
             e.preventDefault();
             const msg = document.getElementById('contact-msg');
             try {
+                const email = document.getElementById('contact-email').value.trim();
+                const contactEmail = email && isValidEmail(email) ? email : '';
+                const telegramRaw = document.getElementById('contact-telegram').value.trim();
+                const telegram = telegramRaw && !/^https?:\/\//i.test(telegramRaw)
+                    ? `https://t.me/${telegramRaw.replace(/^@/, '')}`
+                    : sanitizeHttpUrl(telegramRaw);
                 await setDoc(contactRef, {
-                    email: document.getElementById('contact-email').value.trim(),
-                    phone: document.getElementById('contact-phone').value.trim(),
-                    telegram: document.getElementById('contact-telegram').value.trim(),
-                    linkedin: document.getElementById('contact-linkedin').value.trim(),
-                    github: document.getElementById('contact-github').value.trim(),
+                    email: contactEmail,
+                    phone: sanitizePlainText(document.getElementById('contact-phone').value, 60),
+                    telegram: sanitizeHttpUrl(telegram),
+                    linkedin: sanitizeHttpUrl(document.getElementById('contact-linkedin').value),
+                    github: sanitizeHttpUrl(document.getElementById('contact-github').value),
                     telegramVisible: document.getElementById('telegram-visible').checked,
                     linkedinVisible: document.getElementById('linkedin-visible').checked,
                     githubVisible: document.getElementById('github-visible').checked,
@@ -253,7 +261,12 @@
                         canvas.width = width;
                         canvas.height = height;
                         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.75));
+                        const encoded = canvas.toDataURL('image/webp', 0.72);
+                        if (encoded.length > MAX_ENCODED_MEDIA_SIZE) {
+                            reject(new Error('الصورة كبيرة بعد الضغط. استخدم صورة أصغر.'));
+                            return;
+                        }
+                        resolve(encoded);
                     };
                     img.onerror = reject;
                 };
@@ -316,8 +329,8 @@
             msg.className = 'msg';
 
             try {
-                let cvData = currentCvData;
-                let aboutImage = currentAboutImage;
+                let cvData = sanitizeMediaUrl(currentCvData, { allowImage: false, allowPdf: true });
+                let aboutImage = sanitizeMediaUrl(currentAboutImage, { allowImage: true, allowPdf: false });
 
                 if (removeCv) {
                     cvData = '';
@@ -327,10 +340,11 @@
                 const cvFile = document.getElementById('cv-file').files[0];
                 if (cvFile) {
                     if (cvFile.size > MAX_CV_SIZE) {
-                        throw new Error('حجم ملف السيرة الذاتية يتجاوز 800 كيلوبايت. استخدم ملفاً أصغر.');
+                        throw new Error('حجم ملف السيرة الذاتية يتجاوز 450 كيلوبايت. استخدم ملفاً أصغر.');
                     }
                     msg.textContent = 'جاري معالجة السيرة الذاتية...';
-                    cvData = await readFileAsDataURL(cvFile);
+                    cvData = sanitizeMediaUrl(await readFileAsDataURL(cvFile), { allowImage: false, allowPdf: true });
+                    if (!cvData) throw new Error('صيغة السيرة الذاتية غير مدعومة.');
                 }
 
                 if (removeAbout) {
@@ -341,13 +355,13 @@
                 const aboutFile = document.getElementById('about-image').files[0];
                 if (aboutFile) {
                     msg.textContent = 'جاري معالجة الصورة...';
-                    aboutImage = await compressImage(aboutFile);
+                    aboutImage = sanitizeMediaUrl(await compressImage(aboutFile), { allowImage: true, allowPdf: false });
                 }
 
                 await setDoc(generalRef, {
                     cvData,
                     aboutImage,
-                    aboutText: document.getElementById('about-text').value.trim(),
+                    aboutText: sanitizePlainText(document.getElementById('about-text').value, 5000),
                     cvUrl: null
                 }, { merge: true });
 

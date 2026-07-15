@@ -33,7 +33,7 @@ export async function onRequest(context) {
         { path: '/services', changefreq: 'weekly', priority: '0.8' },
         { path: '/projects', changefreq: 'weekly', priority: '0.8' },
         { path: '/articles', changefreq: 'weekly', priority: '0.8' },
-        { path: '/donation', changefreq: 'monthly', priority: '0.5' },
+        { path: '/donation/', changefreq: 'monthly', priority: '0.5' },
     ];
 
     staticPages.forEach(page => {

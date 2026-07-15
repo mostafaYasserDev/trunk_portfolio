@@ -78,8 +78,9 @@
 
     <script src="../js/admin.js"></script>
     <script type="module">
-        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs } from '../firebase/firebase.js';
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs, limit } from '../firebase/firebase.js';
         import { translateFirebaseError } from '../js/admin-ui.js';
+        import { escapeHtml, sanitizePlainText } from '../js/security.js';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -104,7 +105,7 @@
                 currentServices[documentSnap.id] = data;
                 servicesList.innerHTML += `
                     <tr>
-                        <td>${data.title}</td>
+                        <td>${escapeHtml(data.title)}</td>
                         <td>${data.featured ? '✅ نعم' : '❌ لا'}</td>
                         <td>
                             <div class="table-actions">
@@ -154,8 +155,8 @@
         // Add service
         document.getElementById('add-service-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const title = document.getElementById('service-title').value.trim();
-            const desc = document.getElementById('service-desc').value.trim();
+            const title = sanitizePlainText(document.getElementById('service-title').value, 160);
+            const desc = sanitizePlainText(document.getElementById('service-desc').value, 3000);
             let targetSlug = document.getElementById('service-slug').value.replace(/-+$/, '');
             const featured = document.getElementById('service-featured').checked;
             const submitBtn = e.target.querySelector('button');

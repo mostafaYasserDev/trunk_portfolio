@@ -1,4 +1,5 @@
 import { registerSocialModalLinks } from './social-modal.js';
+import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizePlainText } from './security.js';
 
 export const SOCIAL_PRESETS = {
     linkedin: { label: 'لينكدإن', fa: 'fab fa-linkedin-in' },
@@ -38,12 +39,12 @@ function normalizePrimaryField(data, key) {
     let visible = true;
 
     if (key in data) {
-        url = key === 'telegram' ? formatTelegramUrl(data[key]) : String(data[key] || '').trim();
+        url = sanitizeHttpUrl(key === 'telegram' ? formatTelegramUrl(data[key]) : data[key]);
         visible = data[visibleKey] !== false;
     } else if (Array.isArray(data.socialLinks)) {
         const fromList = data.socialLinks.find(l => l.preset === key && String(l.url || '').trim());
         if (fromList) {
-            url = key === 'telegram' ? formatTelegramUrl(fromList.url) : String(fromList.url).trim();
+            url = sanitizeHttpUrl(key === 'telegram' ? formatTelegramUrl(fromList.url) : fromList.url);
             visible = fromList.visible !== false;
         }
     }
@@ -62,9 +63,9 @@ export function normalizeContactSocial(data = {}) {
         extras = data.extraSocialLinks.map((link, i) => ({
             id: link.id || `extra-${i}`,
             preset: link.preset || 'custom',
-            label: link.label || '',
-            url: String(link.url || '').trim(),
-            customIcon: link.customIcon || '',
+            label: sanitizePlainText(link.label, 120),
+            url: sanitizeHttpUrl(link.url),
+            customIcon: sanitizeMediaUrl(link.customIcon, { allowImage: true, allowPdf: false }),
             visible: link.visible !== false,
             order: typeof link.order === 'number' ? link.order : i
         }));
@@ -74,9 +75,9 @@ export function normalizeContactSocial(data = {}) {
             .map((link, i) => ({
                 id: link.id || `extra-${i}`,
                 preset: link.preset || 'custom',
-                label: link.label || '',
-                url: String(link.url || '').trim(),
-                customIcon: link.customIcon || '',
+                label: sanitizePlainText(link.label, 120),
+                url: sanitizeHttpUrl(link.url),
+                customIcon: sanitizeMediaUrl(link.customIcon, { allowImage: true, allowPdf: false }),
                 visible: link.visible !== false,
                 order: typeof link.order === 'number' ? link.order : i
             }));

@@ -98,6 +98,7 @@
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
         import { translateFirebaseError } from '../js/admin-ui.js';
+        import { escapeHtml, sanitizeHttpUrl, sanitizeIconClass, sanitizeMediaUrl, sanitizePlainText } from '../js/security.js';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -123,23 +124,26 @@
                 const isActive = data.active !== false;
                 window.donationsData[id] = data;
 
-                const iconHtml = data.icon && data.icon.startsWith('data:image') 
-                    ? `<img src="${data.icon}" style="width:30px;height:30px;object-fit:contain;">` 
-                    : `<i class="${data.icon || 'fas fa-link'}"></i>`;
+                const safeIconImage = sanitizeMediaUrl(data.icon, { allowImage: true, allowPdf: false });
+                const safeIconClass = sanitizeIconClass(data.icon) || 'fas fa-link';
+                const safeUrl = sanitizeHttpUrl(data.url);
+                const iconHtml = safeIconImage
+                    ? `<img src="${escapeHtml(safeIconImage)}" alt="" style="width:30px;height:30px;object-fit:contain;">`
+                    : `<i class="${escapeHtml(safeIconClass)}" aria-hidden="true"></i>`;
 
                 list.innerHTML += `
                     <tr>
                         <td style="font-size: 1.5rem; text-align:center;">${iconHtml}</td>
-                        <td>${data.title}</td>
+                        <td>${escapeHtml(data.title)}</td>
                         <td>
                             <label class="switch" style="cursor:pointer;">
-                                <input type="checkbox" onchange="toggleActive('${id}', this.checked)" ${isActive ? 'checked' : ''}>
+                                <input type="checkbox" aria-label="تفعيل ${escapeHtml(data.title)}" onchange="toggleActive('${id}', this.checked)" ${isActive ? 'checked' : ''}>
                                 ${isActive ? 'مفعل' : 'معطل'}
                             </label>
                         </td>
                         <td>
                             <div class="table-actions">
-                                <a href="${data.url}" target="_blank" class="btn btn-sm">تجربة الرابط</a>
+                                ${safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">تجربة الرابط</a>` : '<span class="hint">رابط غير صالح</span>'}
                                 <button class="btn btn-sm" onclick="editDonation('${id}')">تعديل</button>
                                 <button class="btn btn-danger btn-sm" onclick="deleteDonation('${id}')">حذف</button>
                             </div>
@@ -171,24 +175,74 @@
         const submitBtn = document.getElementById('submit-btn');
         const cancelBtn = document.getElementById('cancel-btn');
         let currentImageBase64 = '';
+        const MAX_ENCODED_ICON_SIZE = 180 * 1024;
+
+        function compressIconFile(file) {
+            return new Promise((resolve, reject) => {
+                if (!file.type.startsWith('image/')) {
+                    reject(new Error('الملف المختار ليس صورة.'));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const image = new Image();
+                    image.onload = () => {
+                        const maxSide = 160;
+                        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(image.width * scale));
+                        canvas.height = Math.max(1, Math.round(image.height * scale));
+                        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+                        const encoded = canvas.toDataURL('image/webp', 0.8);
+                        if (encoded.length > MAX_ENCODED_ICON_SIZE) {
+                            reject(new Error('الأيقونة كبيرة بعد الضغط. استخدم صورة أبسط.'));
+                            return;
+                        }
+                        resolve(encoded);
+                    };
+                    image.onerror = () => reject(new Error('تعذر قراءة الصورة.'));
+                    image.src = event.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderIconPreview(value) {
+            previewDiv.innerHTML = '';
+            const image = sanitizeMediaUrl(value, { allowImage: true, allowPdf: false });
+            if (image) {
+                const img = document.createElement('img');
+                img.src = image;
+                img.alt = '';
+                img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+                previewDiv.appendChild(img);
+                return;
+            }
+            const icon = document.createElement('i');
+            icon.className = sanitizeIconClass(value) || 'fas fa-image';
+            if (!sanitizeIconClass(value)) icon.style.color = '#ccc';
+            previewDiv.appendChild(icon);
+        }
 
         // Live preview for icon class
         iconInput.addEventListener('input', () => {
-            if (iconInput.value) previewDiv.innerHTML = `<i class="${iconInput.value}"></i>`;
-            else previewDiv.innerHTML = `<i class="fas fa-image" style="color:#ccc;"></i>`;
+            renderIconPreview(iconInput.value);
         });
 
         // Live preview and compression for image/SVG upload
-        imageInput.addEventListener('change', (e) => {
+        imageInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                currentImageBase64 = event.target.result;
+            try {
+                currentImageBase64 = await compressIconFile(file);
                 iconInput.value = ''; // clear text if image uploaded
-                previewDiv.innerHTML = `<img src="${currentImageBase64}" style="width:100%;height:100%;object-fit:contain;">`;
-            };
+                renderIconPreview(currentImageBase64);
+            } catch (error) {
+                currentImageBase64 = '';
+                imageInput.value = '';
+                alert(error.message || 'تعذر معالجة الصورة.');
+            }
         });
 
         window.editDonation = (id) => {
@@ -203,11 +257,11 @@
             if (data.icon && data.icon.startsWith('data:image')) {
                 currentImageBase64 = data.icon;
                 iconInput.value = '';
-                previewDiv.innerHTML = `<img src="${data.icon}" style="width:100%;height:100%;object-fit:contain;">`;
+                renderIconPreview(currentImageBase64);
             } else {
                 currentImageBase64 = '';
                 iconInput.value = data.icon || '';
-                previewDiv.innerHTML = data.icon ? `<i class="${data.icon}"></i>` : `<i class="fas fa-image" style="color:#ccc;"></i>`;
+                renderIconPreview(data.icon);
             }
 
             submitBtn.textContent = 'تحديث الطريقة';
@@ -231,7 +285,17 @@
             e.preventDefault();
             submitBtn.disabled = true;
 
-            const finalIcon = currentImageBase64 ? currentImageBase64 : iconInput.value;
+            const title = sanitizePlainText(titleInput.value, 160);
+            const description = sanitizePlainText(descInput.value, 1000);
+            const safeUrl = sanitizeHttpUrl(urlInput.value);
+            const finalIcon = currentImageBase64
+                ? sanitizeMediaUrl(currentImageBase64, { allowImage: true, allowPdf: false })
+                : sanitizeIconClass(iconInput.value);
+            if (!title || !safeUrl) {
+                alert('يُرجى إدخال عنوان ورابط https صالحين.');
+                submitBtn.disabled = false;
+                return;
+            }
             if (!finalIcon) {
                 alert('يُرجى إدخال كود الأيقونة أو رفع صورة.');
                 submitBtn.disabled = false;
@@ -240,10 +304,10 @@
 
             try {
                 const docData = {
-                    title: titleInput.value.trim(),
+                    title,
                     icon: finalIcon,
-                    url: urlInput.value.trim(),
-                    description: descInput.value.trim(),
+                    url: safeUrl,
+                    description,
                     active: activeInput.checked
                 };
 

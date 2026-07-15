@@ -159,7 +159,7 @@
                 
                 <div style="text-align: center; margin-top: 30px;">
                     <p style="color: var(--text-muted); font-size: 0.95rem;">
-                        هل تفضل وسيلة دعم أخرى غير متوفرة؟ <a href="client/suggest-donation.html" style="color: var(--primary); text-decoration: none; font-weight: bold; padding-right: 5px;">اقترحها من هنا</a>
+                        هل تفضل وسيلة دعم أخرى غير متوفرة؟ <a href="/client/suggest-donation.html" style="color: var(--primary); text-decoration: none; font-weight: bold; padding-right: 5px;">اقترحها من هنا</a>
                     </p>
                 </div>
             </section>
@@ -198,9 +198,9 @@
 
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script type="module">
-        import { db, collection, getDocs, getDocsFromCache, query, where } from './firebase/public.js';
+        import { db, collection, getDocs, getDocsFromCache, query, where } from '../firebase/public.js';
         import { buildContactHtml, escapeHtml } from './js/helpers.js';
-        import { doc, getDoc, getDocFromCache } from './firebase/public.js';
+        import { doc, getDoc, getDocFromCache } from '../firebase/public.js';
         import { sanitizeHttpUrl, sanitizeIconClass, sanitizeMediaUrl } from './js/security.js';
         
         document.addEventListener('DOMContentLoaded', () => {

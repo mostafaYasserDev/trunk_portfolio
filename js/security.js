@@ -56,6 +56,66 @@ export function sanitizeHttpUrl(url) {
     }
 }
 
+const SAFE_MEDIA_RE = /^data:(image\/(?:png|jpeg|jpg|webp|gif)|application\/pdf);base64,[a-z0-9+/]+={0,2}$/i;
+const SAFE_ICON_RE = /^(?:fa|fas|far|fab|fal|fad|fass)\s+fa-[a-z0-9-]+(?:\s+[a-z0-9-]+)*$/i;
+
+/** Accept only http(s) URLs or explicitly supported base64 media. */
+export function sanitizeMediaUrl(value, { allowImage = true, allowPdf = false } = {}) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (SAFE_MEDIA_RE.test(raw)) {
+        if (raw.toLowerCase().startsWith('data:application/pdf')) return allowPdf ? raw : '';
+        return allowImage ? raw : '';
+    }
+    return sanitizeHttpUrl(raw);
+}
+
+export function sanitizeIconClass(value) {
+    const raw = String(value || '').trim();
+    return SAFE_ICON_RE.test(raw) ? raw : '';
+}
+
+function isSafeRichUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw || raw.startsWith('#') || raw.startsWith('/') || raw.startsWith('./') || raw.startsWith('../')) return true;
+    if (SAFE_MEDIA_RE.test(raw) && raw.toLowerCase().startsWith('data:image/')) return true;
+    try {
+        const parsed = new URL(raw, typeof window !== 'undefined' ? window.location.origin : 'https://localhost');
+        return ['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol);
+    } catch {
+        return false;
+    }
+}
+
+/** Remove executable elements, event handlers and unsafe URLs from editor HTML. */
+export function sanitizeRichHtml(value) {
+    const source = String(value || '');
+    if (!source || typeof DOMParser === 'undefined') return '';
+    const doc = new DOMParser().parseFromString(source, 'text/html');
+    doc.querySelectorAll('script, iframe, object, embed, svg, math, base, meta, link, form, foreignObject').forEach(el => el.remove());
+    doc.querySelectorAll('style').forEach(style => {
+        if (/(?:@import|url\s*\(|expression\s*\(|javascript\s*:|vbscript\s*:)/i.test(style.textContent || '')) style.remove();
+    });
+    doc.querySelectorAll('*').forEach(el => {
+        [...el.attributes].forEach(attr => {
+            const name = attr.name.toLowerCase();
+            const attrValue = attr.value || '';
+            if (name.startsWith('on') || name === 'srcdoc' || name === 'formaction' || name === 'xlink:href') {
+                el.removeAttribute(attr.name);
+                return;
+            }
+            if ((name === 'href' || name === 'src' || name === 'action') && !isSafeRichUrl(attrValue)) {
+                el.removeAttribute(attr.name);
+                return;
+            }
+            if (name === 'style' && /(?:expression\s*\(|javascript\s*:|vbscript\s*:|url\s*\()/i.test(attrValue)) {
+                el.removeAttribute(attr.name);
+            }
+        });
+    });
+    return doc.body.innerHTML;
+}
+
 export function validatePublicPayload(fields) {
     for (const [key, val] of Object.entries(fields)) {
         if (typeof val !== 'string') continue;

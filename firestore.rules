@@ -4,7 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      return request.auth != null;
+      // Temporary email allow-list until a Firebase custom admin claim is provisioned.
+      return request.auth != null
+        && request.auth.token.email == 'moustafa0yasser123@gmail.com';
     }
 
     function safePlainText(value, minLen, maxLen) {
@@ -45,6 +47,17 @@ service cloud.firestore {
         && (!('source' in d) || safeOptionalText(d.source, 40));
     }
 
+    function validDonationSuggestion() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['name', 'message', 'date', 'read'])
+        && safePlainText(d.name, 2, 100)
+        && safePlainText(d.message, 5, 2000)
+        && d.read == false
+        && d.date is string
+        && d.date.size() <= 40
+        && (!('source' in d) || safeOptionalText(d.source, 40));
+    }
+
     match /messages/{docId} {
       allow read, update, delete: if isAdmin();
       allow create: if validMessage();
@@ -57,7 +70,7 @@ service cloud.firestore {
     }
 
     match /settings/{docId} {
-      allow read: if true;
+      allow read: if docId in ['contact', 'general'];
       allow write: if isAdmin();
     }
 
@@ -77,13 +90,13 @@ service cloud.firestore {
     }
 
     match /donations/{docId} {
-      allow read: if true;
+      allow read: if resource.data.active == true || isAdmin();
       allow write: if isAdmin();
     }
 
     match /donation_suggestions/{docId} {
       allow read, update, delete: if isAdmin();
-      allow create: if true;
+      allow create: if validDonationSuggestion();
     }
 
     match /{document=**} {

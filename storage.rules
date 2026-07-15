@@ -2,9 +2,17 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'moustafa0yasser123@gmail.com';
+    }
+
     match /{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, update: if isAdmin()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('^(image/.*|application/pdf)$');
+      allow delete: if isAdmin();
     }
   }
 }

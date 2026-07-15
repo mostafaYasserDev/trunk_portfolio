@@ -224,8 +224,9 @@
     <script src="../vendor/quill/quill.min.js"></script>
 
     <script type="module">
-        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs } from '../firebase/firebase.js';
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs, orderBy, limit } from '../firebase/firebase.js';
         import { translateFirebaseError } from '../js/admin-ui.js';
+        import { escapeHtml, sanitizeRichHtml, sanitizePlainText, sanitizeHttpUrl, sanitizeMediaUrl } from '../js/security.js';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -368,7 +369,7 @@
         let activeHtmlBlot = null;
 
         function updateHtmlPreview() {
-            htmlPreview.srcdoc = htmlCodeInput.value;
+            htmlPreview.srcdoc = sanitizeRichHtml(htmlCodeInput.value);
         }
 
         function openHtmlModal(blot = null) {
@@ -465,6 +466,7 @@
         const formTitle = document.getElementById('form-title');
 
         let currentEditingImageUrl = '';
+        const MAX_ENCODED_IMAGE_SIZE = 550 * 1024;
 
         // Image Compression to Base64 (Free Alternative to Firebase Storage)
         function compressImage(file) {
@@ -490,8 +492,12 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
                         
-                        // Convert to compressed JPEG (quality 0.7)
-                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                        const encoded = canvas.toDataURL('image/webp', 0.72);
+                        if (encoded.length > MAX_ENCODED_IMAGE_SIZE) {
+                            reject(new Error('الصورة كبيرة بعد الضغط. استخدم صورة أبسط أو أصغر.'));
+                            return;
+                        }
+                        resolve(encoded);
                     };
                     img.onerror = error => reject(error);
                 };
@@ -511,6 +517,7 @@
             snapshot.forEach((docSnap) => {
                 const data = docSnap.data();
                 const id = docSnap.id;
+                const safeImage = sanitizeMediaUrl(data.coverImage);
                 // Store full content in window variable to avoid passing huge HTML strings via inline handlers
                 if(!window.articleDataMap) window.articleDataMap = {};
                 window.articleDataMap[id] = {
@@ -523,9 +530,9 @@
                 
                 list.innerHTML += `
                     <tr>
-                        <td>${data.coverImage ? `<img src="${data.coverImage}" class="table-img" alt="">` : '—'}</td>
-                        <td><strong>${data.title}</strong></td>
-                        <td>${data.publishDate}</td>
+                        <td>${safeImage ? `<img src="${escapeHtml(safeImage)}" class="table-img" alt="">` : '—'}</td>
+                        <td><strong>${escapeHtml(data.title)}</strong></td>
+                        <td>${escapeHtml(data.publishDate)}</td>
                         <td><div class="table-actions">
                             <button class="btn btn-sm" onclick="editArticle('${id}')">تعديل</button>
                             <button class="btn btn-danger btn-sm" onclick="deleteArticle('${id}')">حذف</button>
@@ -544,8 +551,8 @@
             slugInput.value = data.slug || id;
             descInput.value = data.shortDescription;
             if (!quill) return;
-            quill.root.innerHTML = data.content; // Load HTML into Quill
-            currentEditingImageUrl = data.coverImage;
+            quill.root.innerHTML = sanitizeRichHtml(data.content || ''); // Load sanitized HTML into Quill
+            currentEditingImageUrl = sanitizeMediaUrl(data.coverImage);
             
             formTitle.textContent = 'تعديل المقال';
             submitBtn.textContent = 'تحديث المقال';
@@ -579,14 +586,14 @@
                 return;
             }
 
-            const titleVal = titleInput.value.trim();
+            const titleVal = sanitizePlainText(titleInput.value, 160);
             if (!titleVal) {
                 msgDiv.textContent = 'يُرجى إدخال عنوان المقال.';
                 msgDiv.style.color = 'red';
                 return;
             }
 
-            const htmlContent = quill.root.innerHTML;
+            const htmlContent = sanitizeRichHtml(quill.root.innerHTML);
             if (quill.getText().trim().length === 0) {
                 msgDiv.textContent = 'المحتوى لا يمكن أن يكون فارغاً.';
                 msgDiv.style.color = 'red';
@@ -605,20 +612,20 @@
             msgDiv.style.color = 'var(--admin-primary)';
 
             try {
-                let coverImage = currentEditingImageUrl;
+                let coverImage = sanitizeMediaUrl(currentEditingImageUrl);
                 
                 // Handle Image Upload using Base64 Compression
                 if (imageInput.files.length > 0) {
                     const file = imageInput.files[0];
                     progressDiv.textContent = 'جاري ضغط ومعالجة الصورة...';
-                    coverImage = await compressImage(file);
+                    coverImage = sanitizeMediaUrl(await compressImage(file));
                     progressDiv.textContent = '';
                 }
 
                 const articleData = {
                     title: titleVal,
                     slug: targetSlug,
-                    shortDescription: descInput.value,
+                    shortDescription: sanitizePlainText(descInput.value, 500),
                     content: htmlContent, // Save as rich HTML
                     coverImage: coverImage,
                     publishDate: idInput.value ? undefined : new Date().toISOString().split('T')[0] // Only set date on creation

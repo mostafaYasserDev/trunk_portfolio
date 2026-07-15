@@ -1,0 +1,17 @@
+.git
+.git/**
+functions
+functions/**
+test_unzipped
+test_unzipped/**
+*.zip
+doc_text.txt
+doc_text_utf8.txt
+report.txt
+qa-report-ar.md
+firebase.json
+firestore.rules
+storage.rules
+wrangler.jsonc
+fetch_headers.js
+test_query.js

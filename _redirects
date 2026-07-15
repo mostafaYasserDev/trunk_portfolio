@@ -15,4 +15,5 @@
 /services   /?spa=true  200
 /contact    /?spa=true  200
 
-/donation /donation.html 200
+/donation /donation/ 301
+/donation.html /donation/ 301

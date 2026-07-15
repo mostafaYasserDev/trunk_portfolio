@@ -1,7 +1,8 @@
-const CACHE_NAME = 'jidhe-v10';
+const CACHE_NAME = 'jidhe-v11';
 const ASSETS = [
     './',
     './index.html',
+    './donation/index.html',
     './css/style.css',
     './css/responsive.css',
     './js/app.js',
@@ -44,7 +45,8 @@ self.addEventListener('fetch', (e) => {
     if (url.origin !== self.location.origin) return;
 
     // Skip admin and client pages — always fetch fresh
-    if (url.pathname.startsWith('/admin/') || url.pathname.startsWith('/client/')) return;
+    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/client/')) return;
+    if (url.pathname.startsWith('/js/admin') || url.pathname.startsWith('/firebase/firebase.js')) return;
 
     // Skip Vercel serverless API routes — always fetch fresh
     if (url.pathname.startsWith('/api/')) return;

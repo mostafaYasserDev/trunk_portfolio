@@ -1,5 +1,5 @@
 import { SOCIAL_PRESETS } from '../js/social.js';
-import { sanitizeHttpUrl } from '../js/security.js';
+import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizePlainText, escapeHtml } from '../js/security.js';
 
 let extraLinks = [];
 
@@ -64,17 +64,17 @@ function renderExtraRow(link, index) {
                 </div>
                 <div class="form-group">
                     <label>الاسم الظاهر</label>
-                    <input type="text" class="form-control xl-label" value="${link.label || ''}" placeholder="مثال: حسابي على إنستغرام">
+                    <input type="text" class="form-control xl-label" value="${escapeHtml(link.label || '')}" placeholder="مثال: حسابي على إنستغرام">
                 </div>
             </div>
             <div class="form-group">
                 <label>الرابط</label>
-                <input type="url" class="form-control xl-url" dir="ltr" style="text-align:left;" value="${link.url || ''}" placeholder="https://">
+                <input type="url" class="form-control xl-url" dir="ltr" style="text-align:left;" value="${escapeHtml(link.url || '')}" placeholder="https://">
             </div>
             <div class="form-group xl-custom-icon-wrap" style="${isCustom ? '' : 'display:none;'}">
                 <label>أيقونة مخصصة (PNG/SVG — تُعرض بحجمها الطبيعي)</label>
                 <input type="file" class="form-control xl-icon-file" accept="image/*">
-                ${link.customIcon ? `<div class="social-preview-chip social-preview-chip--large"><img src="${link.customIcon}" class="social-icon-preview-img" alt=""></div>` : ''}
+                ${sanitizeMediaUrl(link.customIcon, { allowImage: true, allowPdf: false }) ? `<div class="social-preview-chip social-preview-chip--large"><img src="${escapeHtml(sanitizeMediaUrl(link.customIcon, { allowImage: true, allowPdf: false }))}" class="social-icon-preview-img" alt=""></div>` : ''}
             </div>
         </div>`;
 }
@@ -85,9 +85,9 @@ function readExtraRow(row) {
     return {
         id,
         preset: row.querySelector('.xl-preset').value,
-        label: row.querySelector('.xl-label').value.trim(),
-        url: row.querySelector('.xl-url').value.trim(),
-        customIcon: existing.customIcon || '',
+        label: sanitizePlainText(row.querySelector('.xl-label').value, 120),
+        url: sanitizeHttpUrl(row.querySelector('.xl-url').value),
+        customIcon: sanitizeMediaUrl(existing.customIcon, { allowImage: true, allowPdf: false }),
         visible: row.querySelector('.xl-visible').checked,
         order: Array.from(row.parentNode.children).indexOf(row)
     };

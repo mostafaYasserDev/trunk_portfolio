@@ -5,6 +5,7 @@ import {
 } from './helpers.js';
 import { bindSocialModals } from './social-modal.js';
 import { createSpamGuard, sanitizeText, isValidEmail } from './spam-guard.js';
+import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizeRichHtml } from './security.js';
 
 // Cache-first: serve from IndexedDB instantly, refresh from network silently in background
 async function fetchDocsLive(q, callback) {
@@ -262,11 +263,13 @@ function renderServiceCard(data, id, compact = true) {
 }
 
 function renderProjectCard(data, id) {
-    return `<div class="card content-in">${data.mainImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.mainImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#project?id=${escapeHtml(data.slug || id)}" class="btn">عرض المشروع</a></div></div>`;
+    const image = sanitizeMediaUrl(data.mainImage);
+    return `<div class="card content-in">${image ? `<div class="card-img-wrapper"><img src="${escapeHtml(image)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#project?id=${escapeHtml(data.slug || id)}" class="btn">عرض المشروع</a></div></div>`;
 }
 
 function renderArticleCard(data, id) {
-    return `<div class="card content-in">${data.coverImage ? `<div class="card-img-wrapper"><img src="${escapeHtml(data.coverImage)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#article?id=${escapeHtml(data.slug || id)}" class="btn">اقرأ المزيد</a></div></div>`;
+    const image = sanitizeMediaUrl(data.coverImage);
+    return `<div class="card content-in">${image ? `<div class="card-img-wrapper"><img src="${escapeHtml(image)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#article?id=${escapeHtml(data.slug || id)}" class="btn">اقرأ المزيد</a></div></div>`;
 }
 
 function renderReviewCard(data) {
@@ -303,16 +306,27 @@ function applyGeneralSettings(snap) {
     const data = snap.data();
     const cvBtn = document.getElementById('cv-download-btn');
     if (cvBtn) {
-        if (data.cvData && data.cvData.trim() !== '' && data.cvData.trim() !== '#') {
-            cvBtn.href = data.cvData;
+        const cvUrl = sanitizeMediaUrl(data.cvData, { allowImage: false, allowPdf: true });
+        if (cvUrl) {
+            cvBtn.href = cvUrl;
             cvBtn.style.display = 'inline-flex';
         } else {
             cvBtn.style.display = 'none';
         }
     }
     const aboutContainer = document.getElementById('about-image-container');
-    if (aboutContainer && data.aboutImage) {
-        aboutContainer.innerHTML = `<img src="${data.aboutImage}" alt="صورة شخصية" class="about-image content-in" loading="lazy" decoding="async">`;
+    const aboutImageUrl = sanitizeMediaUrl(data.aboutImage, { allowImage: true, allowPdf: false });
+    if (aboutContainer) {
+        aboutContainer.innerHTML = '';
+    }
+    if (aboutContainer && aboutImageUrl) {
+        const image = document.createElement('img');
+        image.src = aboutImageUrl;
+        image.alt = 'صورة شخصية';
+        image.className = 'about-image content-in';
+        image.loading = 'lazy';
+        image.decoding = 'async';
+        aboutContainer.appendChild(image);
     }
     const aboutTextEl = document.getElementById('about-text-content');
     if (aboutTextEl && data.aboutText) {
@@ -423,6 +437,13 @@ function bindHomeContactForm() {
         }
         if (!isValidEmail(payload.email)) {
             statusEl.textContent = 'أدخل بريداً إلكترونياً صحيحاً.';
+            statusEl.className = 'form-status error';
+            statusEl.style.display = 'block';
+            btn.disabled = false;
+            return;
+        }
+        if (payload.name.length < 2 || payload.message.length < 10) {
+            statusEl.textContent = 'الاسم أو الرسالة قصيرة جداً.';
             statusEl.className = 'form-status error';
             statusEl.style.display = 'block';
             btn.disabled = false;
@@ -676,7 +697,7 @@ ${THEME_LISTENER_SCRIPT}`;
 
     container.querySelectorAll('div.custom-html-block[data-html-src]').forEach(div => {
         try {
-            let html = decodeURIComponent(escape(atob(div.getAttribute('data-html-src'))));
+            let html = sanitizeRichHtml(decodeURIComponent(escape(atob(div.getAttribute('data-html-src')))));
 
             // إضافة data-initial-theme على <html> لتطبيق الثيم فور التحميل
             html = html.replace(/<html([^>]*)>/i, `<html$1 data-initial-theme="${theme}">`)
@@ -702,7 +723,7 @@ ${THEME_LISTENER_SCRIPT}`;
                 'margin-top:32px',
                 'margin-bottom:32px',
             ].join(';');
-            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads');
+            iframe.setAttribute('sandbox', 'allow-scripts');
             iframe.srcdoc = html;
 
             // تتبع الـ iframe لإرسال تحديثات الثيم لاحقاً
@@ -740,7 +761,10 @@ async function renderProjectDetail(id) {
         await fetchDocBySlugOrIdLive('projects', id, docSnap => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.mainImage });
+                const mainImage = sanitizeMediaUrl(data.mainImage);
+                const demoLink = sanitizeHttpUrl(data.demoLink);
+                const githubLink = sanitizeHttpUrl(data.githubLink);
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: mainImage, url: `${window.location.origin}/project/${encodeURIComponent(data.slug || id)}` });
                 appRoot.innerHTML = `
                     <div class="view active">
                         <div class="detail-header">
@@ -748,12 +772,12 @@ async function renderProjectDetail(id) {
                             <h1>${escapeHtml(data.title)}</h1>
                             <div class="detail-meta"><span>التقنيات: ${escapeHtml(data.technologies)}</span></div>
                         </div>
-                        ${data.mainImage ? `<img src="${escapeHtml(data.mainImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
+                        ${mainImage ? `<img src="${escapeHtml(mainImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
                         <div class="detail-content">
-                            <div>${data.fullDescription || ''}</div>
+                            <div>${sanitizeRichHtml(data.fullDescription || '')}</div>
                             <div style="margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
-                                ${data.demoLink && data.demoLink !== 'undefined' ? `<a href="${escapeHtml(data.demoLink)}" target="_blank" rel="noopener" class="btn">معاينة حية</a>` : ''}
-                                ${data.githubLink && data.githubLink !== 'undefined' ? `<a href="${escapeHtml(data.githubLink)}" target="_blank" rel="noopener" class="btn" style="background:var(--text-main);">الكود المصدري</a>` : ''}
+                                ${demoLink ? `<a href="${escapeHtml(demoLink)}" target="_blank" rel="noopener noreferrer" class="btn">معاينة حية</a>` : ''}
+                                ${githubLink ? `<a href="${escapeHtml(githubLink)}" target="_blank" rel="noopener noreferrer" class="btn" style="background:var(--text-main);">الكود المصدري</a>` : ''}
                             </div>
                         </div>
                         <div style="text-align: center; margin-top: 40px;">
@@ -766,9 +790,8 @@ async function renderProjectDetail(id) {
                     a.setAttribute('target', '_blank');
                     a.setAttribute('rel', 'noopener noreferrer');
                     const h = a.getAttribute('href') || '';
-                    if (h && !/^https?:\/\//i.test(h) && !/^mailto:/i.test(h)) {
-                        a.setAttribute('href', 'https://' + h);
-                    }
+                    const safe = /^mailto:/i.test(h) ? '' : sanitizeHttpUrl(/^https?:\/\//i.test(h) ? h : `https://${h}`);
+                    if (safe) a.setAttribute('href', safe); else a.removeAttribute('href');
                 });
                 renderHtmlBlocks(appRoot);
             } else appRoot.innerHTML = showError('المشروع غير موجود.');
@@ -782,7 +805,8 @@ async function renderArticleDetail(id) {
         await fetchDocBySlugOrIdLive('articles', id, docSnap => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: data.coverImage });
+                const coverImage = sanitizeMediaUrl(data.coverImage);
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: coverImage, url: `${window.location.origin}/article/${encodeURIComponent(data.slug || id)}` });
                 appRoot.innerHTML = `
                     <div class="view active">
                         <div class="detail-header">
@@ -790,8 +814,8 @@ async function renderArticleDetail(id) {
                             <h1>${escapeHtml(data.title)}</h1>
                             <div class="detail-meta"><span>نُشر في: ${escapeHtml(data.publishDate)}</span></div>
                         </div>
-                        ${data.coverImage ? `<img src="${escapeHtml(data.coverImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
-                        <div class="detail-content">${data.content}</div>
+                        ${coverImage ? `<img src="${escapeHtml(coverImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
+                        <div class="detail-content">${sanitizeRichHtml(data.content || '')}</div>
                         <div style="text-align: center; margin-top: 40px;">
                             <a href="#articles" class="btn" style="background:var(--text-muted);">العودة للمقالات</a>
                         </div>
@@ -802,9 +826,8 @@ async function renderArticleDetail(id) {
                     a.setAttribute('target', '_blank');
                     a.setAttribute('rel', 'noopener noreferrer');
                     const h = a.getAttribute('href') || '';
-                    if (h && !/^https?:\/\//i.test(h) && !/^mailto:/i.test(h)) {
-                        a.setAttribute('href', 'https://' + h);
-                    }
+                    const safe = /^mailto:/i.test(h) ? '' : sanitizeHttpUrl(/^https?:\/\//i.test(h) ? h : `https://${h}`);
+                    if (safe) a.setAttribute('href', safe); else a.removeAttribute('href');
                 });
                 renderHtmlBlocks(appRoot);
                 initReadingProgress();
@@ -819,7 +842,7 @@ async function renderServiceDetail(id) {
         await fetchDocBySlugOrIdLive('services', id, docSnap => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                updatePageMeta({ title: `${data.title} - جذع`, description: data.description || data.title });
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.description || data.title, url: `${window.location.origin}/service/${encodeURIComponent(data.slug || id)}` });
                 appRoot.innerHTML = `
                     <div class="view active">
                         <div class="detail-header">

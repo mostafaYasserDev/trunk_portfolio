@@ -1,14 +1,19 @@
+import { sanitizeMediaUrl } from './security.js';
+
 /**
  * نافذة روابط التواصل الإضافية
  */
 
 const modalData = new Map();
 let modalSeq = 0;
+const boundRoots = new WeakSet();
+
 let overlayEl = null;
 
 function renderModalIcon(link, escapeHtml) {
-    if (link.customIcon) {
-        return `<img src="${escapeHtml(link.customIcon)}" alt="" class="social-modal-custom-icon" loading="lazy">`;
+    const customIcon = sanitizeMediaUrl(link.customIcon, { allowImage: true, allowPdf: false });
+    if (customIcon) {
+        return `<img src="${escapeHtml(customIcon)}" alt="" class="social-modal-custom-icon" loading="lazy">`;
     }
     if (link.fa) {
         return `<i class="${link.fa}" aria-hidden="true"></i>`;
@@ -74,8 +79,8 @@ export function closeSocialModal() {
 }
 
 export function bindSocialModals(root = document, escapeHtml) {
-    if (root.dataset.socialBound) return;
-    root.dataset.socialBound = '1';
+    if (!root || boundRoots.has(root)) return;
+    boundRoots.add(root);
     root.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-social-modal]');
         if (btn) {

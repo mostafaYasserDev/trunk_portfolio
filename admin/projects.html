@@ -247,8 +247,9 @@
     <script src="../js/admin.js"></script>
     <script src="../vendor/quill/quill.min.js"></script>
     <script type="module">
-        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs } from '../firebase/firebase.js';
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs, orderBy, limit } from '../firebase/firebase.js';
         import { translateFirebaseError } from '../js/admin-ui.js';
+        import { escapeHtml, sanitizeRichHtml, sanitizePlainText, sanitizeHttpUrl, sanitizeMediaUrl } from '../js/security.js';
 
         onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login'; });
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
@@ -367,7 +368,7 @@
         let activeHtmlBlot = null;
 
         function updateHtmlPreview() {
-            htmlPreview.srcdoc = htmlCodeInput.value;
+            htmlPreview.srcdoc = sanitizeRichHtml(htmlCodeInput.value);
         }
 
         function openHtmlModal(blot = null) {
@@ -467,6 +468,7 @@
         const cancelBtn = document.getElementById('cancel-btn');
         const formTitle = document.getElementById('form-title');
         let currentEditingImageUrl = '';
+        const MAX_ENCODED_IMAGE_SIZE = 550 * 1024;
 
         function compressImage(file) {
             return new Promise((resolve, reject) => {
@@ -482,7 +484,12 @@
                         if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                         canvas.width = width; canvas.height = height;
                         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                        const encoded = canvas.toDataURL('image/webp', 0.72);
+                        if (encoded.length > MAX_ENCODED_IMAGE_SIZE) {
+                            reject(new Error('الصورة كبيرة بعد الضغط. استخدم صورة أبسط أو أصغر.'));
+                            return;
+                        }
+                        resolve(encoded);
                     };
                     img.onerror = reject;
                 };
@@ -506,6 +513,7 @@
             
             docsData.forEach((data) => {
                 const id = data.id;
+                const safeImage = sanitizeMediaUrl(data.mainImage);
                 const safeData = encodeURIComponent(JSON.stringify({
                     id, title: data.title, slug: data.slug || '', technologies: data.technologies,
                     shortDescription: data.shortDescription, fullDescription: data.fullDescription,
@@ -513,8 +521,8 @@
                 }));
                 list.innerHTML += `
                     <tr>
-                        <td>${data.mainImage ? `<img src="${data.mainImage}" class="table-img" alt="">` : '—'}</td>
-                        <td><strong>${data.title}</strong><br><span style="font-size:0.85rem;color:var(--admin-text-muted);">${data.technologies || ''}</span></td>
+                        <td>${safeImage ? `<img src="${escapeHtml(safeImage)}" class="table-img" alt="">` : '—'}</td>
+                        <td><strong>${escapeHtml(data.title)}</strong><br><span style="font-size:0.85rem;color:var(--admin-text-muted);">${escapeHtml(data.technologies || '')}</span></td>
                         <td>${data.featured ? '✅' : '—'}</td>
                         <td><div class="table-actions">
                             <button class="btn btn-sm" onclick="editProject('${safeData}', '${id}')">تعديل</button>
@@ -522,7 +530,7 @@
                         </div></td>
                     </tr>`;
                 if (!window.projectImages) window.projectImages = {};
-                window.projectImages[id] = data.mainImage || '';
+                window.projectImages[id] = safeImage || '';
             });
         });
 
@@ -534,7 +542,7 @@
             techInput.value = data.technologies || '';
             shortInput.value = data.shortDescription || '';
             // Load rich HTML into Quill editor
-            quillProj.root.innerHTML = data.fullDescription || '';
+            quillProj.root.innerHTML = sanitizeRichHtml(data.fullDescription || '');
             demoInput.value = data.demoLink || '';
             githubInput.value = data.githubLink || '';
             featuredInput.checked = data.featured || false;
@@ -566,7 +574,7 @@
             e.preventDefault();
 
             let targetSlug = slugInput.value.replace(/-+$/, ''); // Remove trailing dash
-            const titleVal = titleInput.value.trim();
+            const titleVal = sanitizePlainText(titleInput.value, 160);
             if (!titleVal) {
                 msgDiv.textContent = 'يُرجى إدخال عنوان المشروع.';
                 msgDiv.className = 'msg-error';
@@ -582,13 +590,13 @@
             msgDiv.textContent = 'جاري الحفظ...';
             msgDiv.className = '';
             try {
-                let mainImage = currentEditingImageUrl;
+                let mainImage = sanitizeMediaUrl(currentEditingImageUrl);
                 if (imageInput.files.length > 0) {
                     progressDiv.textContent = 'جاري معالجة الصورة...';
-                    mainImage = await compressImage(imageInput.files[0]);
+                    mainImage = sanitizeMediaUrl(await compressImage(imageInput.files[0]));
                     progressDiv.textContent = '';
                 }
-                const htmlContent = quillProj.root.innerHTML;
+                const htmlContent = sanitizeRichHtml(quillProj.root.innerHTML);
                 if (quillProj.getText().trim().length === 0) {
                     msgDiv.textContent = 'الوصف الكامل لا يمكن أن يكون فارغاً.';
                     msgDiv.className = 'msg-error';
@@ -599,11 +607,11 @@
                 const projectData = {
                     title: titleVal,
                     slug: targetSlug,
-                    technologies: techInput.value.trim(),
-                    shortDescription: shortInput.value.trim(),
+                    technologies: sanitizePlainText(techInput.value, 240),
+                    shortDescription: sanitizePlainText(shortInput.value, 500),
                     fullDescription: htmlContent,
-                    demoLink: demoInput.value.trim(),
-                    githubLink: githubInput.value.trim(),
+                    demoLink: sanitizeHttpUrl(demoInput.value),
+                    githubLink: sanitizeHttpUrl(githubInput.value),
                     featured: featuredInput.checked,
                     mainImage
                 };
