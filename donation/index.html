@@ -88,6 +88,14 @@
             color: var(--primary);
             margin-bottom: 15px;
         }
+
+        .donation-icon-image {
+            display: block;
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            margin: 0 auto 15px;
+        }
         
         .donation-card h3 {
             margin-bottom: 10px;
@@ -201,7 +209,7 @@
         import { db, collection, getDocs, getDocsFromCache, query, where } from '/firebase/public.js?v=13';
         import { buildContactHtml, escapeHtml } from '/js/helpers.js?v=13';
         import { doc, getDoc, getDocFromCache } from '/firebase/public.js?v=13';
-        import { sanitizeHttpUrl, sanitizeIconClass, sanitizeMediaUrl } from '/js/security.js?v=13';
+        import { sanitizeHttpUrl, sanitizeIconClass, sanitizeMediaUrl } from '/js/security.js?v=14';
         
         document.addEventListener('DOMContentLoaded', () => {
             AOS.init({ once: true, duration: 800 });
@@ -302,10 +310,10 @@
                             const safeIconClass = sanitizeIconClass(data.icon) || 'fas fa-heart';
                             if (safeUrl) {
                                 activeDonationsCount++;
-                                const iconHtml = safeIconImage
-                                    ? `<div class="donation-icon" style="-webkit-mask-image: url('${safeIconImage}'); mask-image: url('${safeIconImage}'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: var(--primary); width:50px; height:50px; margin: 0 auto 15px auto; display:block;" role="img" aria-label="أيقونة وسيلة الدعم"></div>`
-                                    : `<i class="${escapeHtml(safeIconClass)} donation-icon" aria-hidden="true"></i>`;
                                 const title = escapeHtml(data.title || 'وسيلة دعم');
+                                const iconHtml = safeIconImage
+                                    ? `<img src="${escapeHtml(safeIconImage)}" class="donation-icon-image" alt="أيقونة ${title}" loading="eager" decoding="async">`
+                                    : `<i class="${escapeHtml(safeIconClass)} donation-icon" aria-hidden="true"></i>`;
                                 html += `
                                     <a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="donation-card glass-panel">
                                         ${iconHtml}

@@ -5,7 +5,8 @@ import {
 } from './helpers.js';
 import { bindSocialModals } from './social-modal.js';
 import { createSpamGuard, sanitizeText, isValidEmail } from './spam-guard.js';
-import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizeRichHtml } from './security.js?v=12';
+import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizeRichHtml } from './security.js?v=14';
+import { HTML_EMBED_RESIZE_MESSAGE, HTML_EMBED_SANDBOX, prepareEmbeddedHtml } from './html-embed.js?v=14';
 
 // Cache-first: serve from IndexedDB instantly, refresh from network silently in background
 async function fetchDocsLive(q, callback) {
@@ -612,101 +613,42 @@ async function setupPagination(collectionName, containerId, renderCardFn, emptyT
     });
 }
 
-// ── متابعة جميع الـ iframes النشطة لإرسال تحديثات الثيم لحظياً ──
+// ── ملفات HTML الكاملة المرفوعة من لوحة التحكم ──
 const activeHtmlIframes = new Set();
 
-// المتغيرات اللونية لوضعي الفاتح والداكن
-const THEME_VARS = {
-    light: {
-        '--primary': '#8C5A35', '--primary-hover': '#6c4222', '--secondary': '#D4A373',
-        '--accent': '#E9EDC9', '--accent-dark': '#A3B18A', '--background': '#FAEDCD',
-        '--card-bg': '#FEFAE0', '--text-main': '#3E2723', '--text-muted': '#6D4C41',
-        '--border-color': '#D4A373', '--white': '#FFFFFF'
-    },
-    dark: {
-        '--primary': '#C58A5C', '--primary-hover': '#D4A373', '--secondary': '#8C5A35',
-        '--accent': '#4B5A3F', '--accent-dark': '#2F3A26', '--background': '#1A120E',
-        '--card-bg': '#2A1F1A', '--text-main': '#FAEDCD', '--text-muted': '#D4A373',
-        '--border-color': '#4A3525', '--white': '#2A1F1A'
+window.addEventListener('message', (event) => {
+    if (!event.data || event.data.type !== HTML_EMBED_RESIZE_MESSAGE) return;
+    const height = Number(event.data.height);
+    if (!Number.isFinite(height) || height < 50) return;
+
+    for (const iframe of activeHtmlIframes) {
+        if (!iframe.isConnected) {
+            activeHtmlIframes.delete(iframe);
+            continue;
+        }
+        if (iframe.contentWindow === event.source) {
+            iframe.style.height = `${Math.min(100000, Math.ceil(height) + 24)}px`;
+            break;
+        }
     }
-};
-
-// السكريبت المحقون داخل كل iframe: يستمع لتغيير الثيم من الصفحة الأم
-const THEME_LISTENER_SCRIPT = `
-<script>
-(function(){
-  var lightVars=${JSON.stringify(THEME_VARS.light)};
-  var darkVars=${JSON.stringify(THEME_VARS.dark)};
-  function applyTheme(theme){
-    var vars=theme==='dark'?darkVars:lightVars;
-    var r=document.documentElement;
-    Object.keys(vars).forEach(function(k){r.style.setProperty(k,vars[k]);});
-    /* تطبيق شامل لضمان قراءة جميع العناصر */
-    var bg=vars['--background']; var txt=vars['--text-main']; var card=vars['--card-bg'];
-    document.body.style.background=bg; document.body.style.color=txt;
-    document.querySelectorAll('section,article,main,header,footer,[class*="section"],[class*="card"],[class*="container"],[class*="wrapper"],[class*="hero"],[class*="block"],[class*="content"],[class*="box"]').forEach(function(el){
-      if(!el.style.background||el.style.background==='transparent')el.style.background='';
-    });
-  }
-  window.addEventListener('message',function(e){
-    if(e.data&&e.data.type==='jidhe-theme')applyTheme(e.data.theme);
-  });
-  /* تطبيق الثيم المبدئي فور تحميل المستند */
-  document.addEventListener('DOMContentLoaded',function(){
-    var t=document.documentElement.getAttribute('data-initial-theme');
-    if(t)applyTheme(t);
-  });
-})();
-<\/script>`;
-
-// إرسال تحديث الثيم لجميع الـ iframes النشطة
-function broadcastThemeToIframes(theme) {
-    activeHtmlIframes.forEach(iframe => {
-        try {
-            if (iframe.contentWindow) {
-                iframe.contentWindow.postMessage({ type: 'jidhe-theme', theme }, '*');
-            }
-        } catch(e) {}
-    });
-}
-
-// استماع لتغيير الثيم من ui.js وبثه للـ iframes لحظياً
-document.addEventListener('jidhe:themechange', (e) => {
-    broadcastThemeToIframes(e.detail.theme);
 });
 
 function renderHtmlBlocks(container) {
-    const isDark = document.body.classList.contains('dark-mode');
-    const theme = isDark ? 'dark' : 'light';
     const origin = window.location.origin;
-    const vars = THEME_VARS[theme];
 
-    // CSS ثابت يُحقن مرة واحدة: الخطوط + المتغيرات الأولية + الوضع الابتدائي
-    const headInjection = `
-<style>
-@font-face{font-family:'Thmanyah';src:url('${origin}/otf/thmanyahseriftext-Regular.otf') format('opentype');font-weight:normal;font-display:swap;}
-@font-face{font-family:'Thmanyah';src:url('${origin}/otf/thmanyahseriftext-Medium.otf') format('opentype');font-weight:500;font-display:swap;}
-@font-face{font-family:'Thmanyah';src:url('${origin}/otf/thmanyahseriftext-Bold.otf') format('opentype');font-weight:bold;font-display:swap;}
-@font-face{font-family:'Thmanyah';src:url('${origin}/otf/thmanyahseriftext-Black.otf') format('opentype');font-weight:900;font-display:swap;}
-:root{
-${Object.entries(vars).map(([k,v])=>`  ${k}:${v};`).join('\n')}
-}
-body{font-family:'Thmanyah',Tahoma,Arial,sans-serif;background:${vars['--background']};color:${vars['--text-main']};}
-</style>
-${THEME_LISTENER_SCRIPT}`;
+    activeHtmlIframes.forEach(iframe => {
+        if (!iframe.isConnected) activeHtmlIframes.delete(iframe);
+    });
 
     container.querySelectorAll('div.custom-html-block[data-html-src]').forEach(div => {
         try {
-            let html = sanitizeRichHtml(decodeURIComponent(escape(atob(div.getAttribute('data-html-src')))));
-
-            // إضافة data-initial-theme على <html> لتطبيق الثيم فور التحميل
-            html = html.replace(/<html([^>]*)>/i, `<html$1 data-initial-theme="${theme}">`)
-                       .replace(/<head>/i, '<head>' + headInjection);
-            if (!html.toLowerCase().includes('<head>') && !html.toLowerCase().includes('<html')) {
-                html = headInjection + html;
-            }
+            const source = decodeURIComponent(escape(atob(div.getAttribute('data-html-src'))));
+            const html = prepareEmbeddedHtml(source, { origin });
+            if (!html) return;
 
             const iframe = document.createElement('iframe');
+            iframe.className = 'custom-html-frame';
+            iframe.title = 'محتوى HTML مضمّن';
             iframe.style.cssText = [
                 'display:block',
                 'width:100vw',
@@ -723,32 +665,10 @@ ${THEME_LISTENER_SCRIPT}`;
                 'margin-top:32px',
                 'margin-bottom:32px',
             ].join(';');
-            iframe.setAttribute('sandbox', 'allow-scripts');
+            iframe.setAttribute('sandbox', HTML_EMBED_SANDBOX);
             iframe.srcdoc = html;
 
-            // تتبع الـ iframe لإرسال تحديثات الثيم لاحقاً
             activeHtmlIframes.add(iframe);
-
-            iframe.onload = () => {
-                // إرسال الثيم فوراً بعد التحميل للتأكد
-                setTimeout(() => {
-                    try { iframe.contentWindow.postMessage({ type: 'jidhe-theme', theme }, '*'); } catch(e) {}
-                }, 100);
-
-                const resize = () => {
-                    try {
-                        const doc = iframe.contentWindow.document;
-                        const h = Math.max(
-                            doc.documentElement.scrollHeight,
-                            doc.body ? doc.body.scrollHeight : 0
-                        );
-                        if (h > 50) iframe.style.height = (h + 40) + 'px';
-                    } catch(e) {}
-                };
-                setTimeout(resize, 300);
-                setTimeout(resize, 900);
-                setTimeout(resize, 2500);
-            };
             div.parentNode.replaceChild(iframe, div);
         } catch(e) { console.warn('custom-html-block decode error', e); }
     });

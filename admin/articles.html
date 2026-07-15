@@ -209,7 +209,7 @@
                         <span>المعاينة الحية</span>
                         <button type="button" id="html-refresh-btn" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.8rem; background: var(--admin-text-muted);"><i class="fas fa-sync"></i> تحديث</button>
                     </label>
-                    <iframe id="html-preview-frame" style="width: 100%; height: 300px; border: 1px solid var(--admin-border); border-radius: 8px; background: #fff;" sandbox="allow-scripts allow-same-origin"></iframe>
+                    <iframe id="html-preview-frame" title="معاينة ملف HTML" style="width: 100%; height: 300px; border: 1px solid var(--admin-border); border-radius: 8px; background: #fff;" sandbox="allow-scripts allow-downloads allow-popups allow-popups-to-escape-sandbox"></iframe>
                 </div>
             </div>
 
@@ -226,7 +226,8 @@
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs, orderBy, limit } from '../firebase/firebase.js';
         import { translateFirebaseError } from '../js/admin-ui.js';
-        import { escapeHtml, sanitizeRichHtml, sanitizePlainText, sanitizeHttpUrl, sanitizeMediaUrl } from '../js/security.js?v=12';
+        import { escapeHtml, sanitizeRichHtml, sanitizePlainText, sanitizeHttpUrl, sanitizeMediaUrl } from '../js/security.js?v=14';
+        import { HTML_EMBED_SANDBOX, prepareEmbeddedHtml } from '../js/html-embed.js?v=14';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -369,7 +370,8 @@
         let activeHtmlBlot = null;
 
         function updateHtmlPreview() {
-            htmlPreview.srcdoc = sanitizeRichHtml(htmlCodeInput.value);
+            htmlPreview.setAttribute('sandbox', HTML_EMBED_SANDBOX);
+            htmlPreview.srcdoc = prepareEmbeddedHtml(htmlCodeInput.value, { origin: window.location.origin });
         }
 
         function openHtmlModal(blot = null) {
@@ -411,26 +413,7 @@
                 if (!file.name.endsWith('.html')) { alert('الرجاء اختيار ملف HTML صالح.'); return; }
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    let code = e.target.result;
-                    const injection = [
-                        '<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">',
-                        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">',
-                        '<style>',
-                        '@font-face { font-family: "Thmanyah"; src: url("https://mostafayasser.online/otf/thmanyahseriftext-Regular.otf") format("opentype"); font-weight: normal; font-display: swap; }',
-                        '@font-face { font-family: "Thmanyah"; src: url("https://mostafayasser.online/otf/thmanyahseriftext-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }',
-                        '@font-face { font-family: "Thmanyah"; src: url("https://mostafayasser.online/otf/thmanyahseriftext-Bold.otf") format("opentype"); font-weight: bold; font-display: swap; }',
-                        '@font-face { font-family: "Thmanyah"; src: url("https://mostafayasser.online/otf/thmanyahseriftext-Black.otf") format("opentype"); font-weight: 900; font-display: swap; }',
-                        '</style>',
-                        '<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"><\/script>',
-                        '<script>document.addEventListener("DOMContentLoaded",()=>{if(window.AOS)AOS.init({once:true});});<\/script>'
-                    ].join('\n');
-
-                    if (code.toLowerCase().includes('<head>')) {
-                        code = code.replace(/<head>/i, '<head>\n' + injection);
-                    } else {
-                        code = injection + '\n' + code;
-                    }
-                    htmlCodeInput.value = code;
+                    htmlCodeInput.value = e.target.result;
                     updateHtmlPreview();
                     fileInput.value = '';
                 };

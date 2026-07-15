@@ -56,8 +56,12 @@ export function sanitizeHttpUrl(url) {
     }
 }
 
-const SAFE_MEDIA_RE = /^data:(image\/(?:png|jpeg|jpg|webp|gif)|application\/pdf);base64,[a-z0-9+/]+={0,2}$/i;
-const SAFE_ICON_RE = /^(?:fa|fas|far|fab|fal|fad|fass)\s+fa-[a-z0-9-]+(?:\s+[a-z0-9-]+)*$/i;
+const SAFE_MEDIA_RE = /^data:(image\/(?:png|jpeg|jpg|webp|gif|svg\+xml)|application\/pdf);base64,[a-z0-9+/]+={0,2}$/i;
+const SAFE_ICON_STYLES = new Set([
+    'fa', 'fas', 'far', 'fab', 'fal', 'fad', 'fass', 'fat',
+    'fa-solid', 'fa-regular', 'fa-brands', 'fa-light', 'fa-thin',
+    'fa-duotone', 'fa-sharp', 'fa-sharp-duotone'
+]);
 
 /** Accept only http(s) URLs or explicitly supported base64 media. */
 export function sanitizeMediaUrl(value, { allowImage = true, allowPdf = false } = {}) {
@@ -72,7 +76,11 @@ export function sanitizeMediaUrl(value, { allowImage = true, allowPdf = false } 
 
 export function sanitizeIconClass(value) {
     const raw = String(value || '').trim();
-    return SAFE_ICON_RE.test(raw) ? raw : '';
+    const classes = raw.split(/\s+/).filter(Boolean);
+    if (classes.length < 2 || classes.length > 8) return '';
+    if (!SAFE_ICON_STYLES.has(classes[0].toLowerCase())) return '';
+    if (!classes.slice(1).every(className => /^fa-[a-z0-9-]+$/i.test(className))) return '';
+    return classes.join(' ');
 }
 
 function isSafeRichUrl(value) {
