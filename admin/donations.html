@@ -128,7 +128,7 @@
                 const safeIconClass = sanitizeIconClass(data.icon) || 'fas fa-link';
                 const safeUrl = sanitizeHttpUrl(data.url);
                 const iconHtml = safeIconImage
-                    ? `<img src="${escapeHtml(safeIconImage)}" alt="أيقونة ${escapeHtml(data.title)}" style="width:30px;height:30px;object-fit:contain;">`
+                    ? `<span role="img" aria-label="أيقونة ${escapeHtml(data.title)}" style="display:block;width:30px;height:30px;background:var(--admin-primary);--donation-icon-image: url(&quot;${escapeHtml(safeIconImage)}&quot;);-webkit-mask-image:var(--donation-icon-image);mask-image:var(--donation-icon-image);-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;"></span>`
                     : `<i class="${escapeHtml(safeIconClass)}" aria-hidden="true"></i>`;
 
                 list.innerHTML += `
@@ -212,11 +212,16 @@
             previewDiv.innerHTML = '';
             const image = sanitizeMediaUrl(value, { allowImage: true, allowPdf: false });
             if (image) {
-                const img = document.createElement('img');
-                img.src = image;
-                img.alt = '';
-                img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-                previewDiv.appendChild(img);
+                const icon = document.createElement('span');
+                icon.className = 'donation-icon-image';
+                icon.setAttribute('role', 'img');
+                icon.setAttribute('aria-label', 'معاينة أيقونة وسيلة الدعم');
+                icon.style.cssText = 'display:block;width:100%;height:100%;background:var(--admin-primary);-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;';
+                const cssImage = image.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                icon.style.setProperty('--donation-icon-image', `url("${cssImage}")`);
+                icon.style.webkitMaskImage = 'var(--donation-icon-image)';
+                icon.style.maskImage = 'var(--donation-icon-image)';
+                previewDiv.appendChild(icon);
                 return;
             }
             const icon = document.createElement('i');
