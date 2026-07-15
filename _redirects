@@ -11,9 +11,13 @@
 
 # صفحات Listing - SPA
 /articles   /?spa=true  200
+/articles/  /?spa=true  200
 /projects   /?spa=true  200
+/projects/  /?spa=true  200
 /services   /?spa=true  200
+/services/  /?spa=true  200
 /contact    /?spa=true  200
+/contact/   /?spa=true  200
 
 /donation /donation/ 301
 /donation.html /donation/ 301

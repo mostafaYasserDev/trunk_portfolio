@@ -16,10 +16,10 @@
     <meta id="og-description" property="og:description"
         content="جذع - بورتفوليو مصطفى ياسر. مطور واجهات ومصمم تجربة مستخدم. أروي حكايات برمجية بروح فنية ولمسة إبداعية.">
     <meta id="og-image" property="og:image" content="https://mostafayasser.online/assets/logo.png">
-    <meta property="og:image:width" content="512">
-    <meta property="og:image:height" content="512">
-    <meta property="og:image:alt" content="شعار جذع - بورتفوليو مصطفى ياسر">
-    <meta property="og:type" content="website">
+    <meta id="og-image-width" property="og:image:width" content="512">
+    <meta id="og-image-height" property="og:image:height" content="512">
+    <meta id="og-image-alt" property="og:image:alt" content="شعار جذع - بورتفوليو مصطفى ياسر">
+    <meta id="og-type" property="og:type" content="website">
     <meta id="og-url" property="og:url" content="https://mostafayasser.online/">
     <meta property="og:site_name" content="جذع">
     <meta property="og:locale" content="ar_AR">
@@ -30,7 +30,7 @@
     <meta id="twitter-description" name="twitter:description"
         content="جذع - بورتفوليو مصطفى ياسر. مطور واجهات ومصمم تجربة مستخدم.">
     <meta id="twitter-image" name="twitter:image" content="https://mostafayasser.online/assets/logo.png">
-    <meta name="twitter:image:alt" content="شعار جذع">
+    <meta id="twitter-image-alt" name="twitter:image:alt" content="شعار جذع">
     <!-- Canonical -->
     <link rel="canonical" href="https://mostafayasser.online/">
     <title>جذع - حكاية تنمو</title>
@@ -87,24 +87,24 @@
     </style>
     <link rel="modulepreload" href="firebase/public.js">
     <link rel="modulepreload" href="js/helpers.js">
-    <link rel="modulepreload" href="js/app.js?v=14">
+    <link rel="modulepreload" href="js/app.js?v=15">
 </head>
 
 <body>
 
     <div class="container">
         <header>
-            <a href="#home" class="logo logo-link">
+            <a href="/" class="logo logo-link">
                 <img src="assets/logo.png" alt="جذع" fetchpriority="high" width="48" height="48">
                 <div class="logo-text">جذع <span>.</span></div>
             </a>
             <div class="header-right">
                 <nav id="main-nav" class="main-nav">
-                    <a href="#home">الرئيسية</a>
-                    <a href="#services">الخدمات</a>
-                    <a href="#projects">المشاريع</a>
-                    <a href="#articles">المقالات</a>
-                    <a href="#contact">تواصل معي</a>
+                    <a href="/">الرئيسية</a>
+                    <a href="/services">الخدمات</a>
+                    <a href="/projects">المشاريع</a>
+                    <a href="/articles">المقالات</a>
+                    <a href="/contact">تواصل معي</a>
                 </nav>
                 <div class="header-actions">
                     <button id="theme-toggle" class="btn" aria-label="تبديل الوضع الليلي">
@@ -126,7 +126,7 @@
                         <p>تتأصل الأفكار وتنمو كالأشجار. أقدم حلولاً برمجية بروح فنية ولمسة إبداعية تجمع بين أصالة
                             الجذور وجمال الأغصان.</p>
                         <div class="hero-btns">
-                            <a href="#projects" class="btn">استكشف أعمالي</a>
+                            <a href="/projects" class="btn">استكشف أعمالي</a>
                             <a id="cv-download-btn" href="#" class="btn btn-outline" style="display:none;"
                                 download="سيرة-ذاتية.pdf">
                                 <i class="fas fa-file-download"></i> تحميل السيرة الذاتية
@@ -154,7 +154,7 @@
                 <section id="services" data-aos="fade-up">
                     <div class="section-header">
                         <h2 class="section-title">أبرز الخدمات</h2>
-                        <a href="#all-services" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
+                        <a href="/services" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
                     </div>
                     <div class="grid" id="services-grid">
                         <div class="skeleton-card">
@@ -178,7 +178,7 @@
                 <section id="projects" data-aos="fade-up">
                     <div class="section-header">
                         <h2 class="section-title">أبرز المشاريع</h2>
-                        <a href="#all-projects" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
+                        <a href="/projects" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
                     </div>
                     <div class="grid" id="projects-grid">
                         <div class="skeleton-card">
@@ -202,7 +202,7 @@
                 <section id="articles" data-aos="fade-up">
                     <div class="section-header">
                         <h2 class="section-title">أحدث المقالات</h2>
-                        <a href="#all-articles" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
+                        <a href="/articles" class="view-all-link">عرض الكل <i class="fas fa-arrow-left"></i></a>
                     </div>
                     <div class="grid" id="articles-grid">
                         <div class="skeleton-card">
@@ -282,7 +282,7 @@
         <footer class="site-footer">
             <div class="footer-grid">
                 <div class="footer-brand">
-                    <a href="#home" class="footer-logo">
+                    <a href="/" class="footer-logo">
                         <img src="assets/logo.png" alt="جذع" loading="lazy" width="40" height="40">
                         <span>جذع <span style="color: var(--accent-dark);">.</span></span>
                     </a>
@@ -290,13 +290,13 @@
                 </div>
                 <div class="footer-links">
                     <h3>روابط سريعة</h3>
-                    <a href="#home">الرئيسية</a>
-                    <a href="#services">الخدمات</a>
-                    <a href="#projects">المشاريع</a>
-                    <a href="#articles">المقالات</a>
-                    <a href="#contact">تواصل معي</a>
+                    <a href="/">الرئيسية</a>
+                    <a href="/services">الخدمات</a>
+                    <a href="/projects">المشاريع</a>
+                    <a href="/articles">المقالات</a>
+                    <a href="/contact">تواصل معي</a>
                     <a href="client/write-review.html">اكتب رأيك</a>
-                    <a href="donation">الدعم والمساهمة 🌱</a>
+                    <a href="/donation/">الدعم والمساهمة 🌱</a>
                 </div>
                 <div class="footer-contact">
                     <h3>تواصل معي</h3>
@@ -319,7 +319,7 @@
         import { initUI } from './js/ui.js';
         initUI();
     </script>
-    <script type="module" src="js/app.js?v=14"></script>
+    <script type="module" src="js/app.js?v=15"></script>
 </body>
 
 </html>

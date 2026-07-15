@@ -101,40 +101,58 @@ function updateDynamicJsonLd(meta, url) {
     }
     script.textContent = JSON.stringify({
         '@context': 'https://schema.org',
-        '@type': 'WebPage',
+        '@type': meta.schemaType || 'WebPage',
         name: meta.title,
+        ...(meta.schemaType === 'Article' ? { headline: meta.title } : {}),
         description: meta.description,
         url,
         image: meta.image,
-        inLanguage: 'ar'
+        inLanguage: 'ar',
+        ...(meta.author ? { author: { '@type': 'Person', name: meta.author } } : {}),
+        ...(meta.publishedAt ? { datePublished: meta.publishedAt } : {})
     });
 }
 
-export function updatePageMeta({ title, description, image, url } = {}) {
+export function updatePageMeta({ title, description, image, url, schemaType = 'WebPage', imageAlt, author, publishedAt } = {}) {
+    let resolvedImage = image || `${getSiteBase()}assets/logo.png`;
+    if (!/^data:image\//i.test(resolvedImage)) {
+        try { resolvedImage = new URL(resolvedImage, window.location.origin).href; } catch { /* keep original */ }
+    } else {
+        // Base64 is intentionally kept out of social tags. The server middleware
+        // replaces it with the public /img/<collection>/<id>.jpg endpoint.
+        resolvedImage = `${getSiteBase()}assets/logo.png`;
+    }
     const meta = {
         title: title || DEFAULT_META.title,
         description: description || DEFAULT_META.description,
-        image: image || `${getSiteBase()}assets/logo.png`,
-        url: canonicalUrl(url)
+        image: resolvedImage,
+        url: canonicalUrl(url),
+        schemaType,
+        imageAlt: imageAlt || title || DEFAULT_META.title,
+        author,
+        publishedAt
     };
     document.title = meta.title;
     setMetaContent('meta-description', meta.description);
     setMetaContent('og-title', meta.title);
     setMetaContent('og-description', meta.description);
     setMetaContent('og-image', meta.image);
+    setMetaContent('og-image-alt', meta.imageAlt);
+    setMetaContent('og-type', schemaType === 'Article' ? 'article' : 'website');
     setMetaContent('twitter-title', meta.title);
     setMetaContent('twitter-description', meta.description);
     setMetaContent('twitter-image', meta.image);
+    setMetaContent('twitter-image-alt', meta.imageAlt);
     updateCanonical(meta.url);
     updateDynamicJsonLd(meta, meta.url);
 }
 
 export const PAGE_META = {
     home: { title: 'جذع - حكاية تنمو', description: DEFAULT_META.description },
-    services: { title: 'الخدمات - جذع', description: 'استكشف خدمات جذع البرمجية والتصميمية.' },
-    projects: { title: 'المشاريع - جذع', description: 'تصفح مشاريع جذع البرمجية والإبداعية.' },
-    articles: { title: 'المقالات - جذع', description: 'اقرأ أحدث مقالات جذع التقنية والإبداعية.' },
-    contact: { title: 'تواصل معي - جذع', description: 'تواصل مع جذع لبدء مشروعك القادم.' }
+    services: { title: 'الخدمات - جذع', description: 'استكشف خدمات جذع في تطوير الويب وتصميم الواجهات وتجربة المستخدم.', schemaType: 'CollectionPage', imageAlt: 'خدمات جذع' },
+    projects: { title: 'المشاريع - جذع', description: 'تصفح مشاريع جذع البرمجية والإبداعية وحلول الويب المتميزة.', schemaType: 'CollectionPage', imageAlt: 'مشاريع جذع' },
+    articles: { title: 'المقالات - جذع', description: 'اقرأ أحدث مقالات جذع التقنية والإبداعية وحكايات تطوير الويب.', schemaType: 'CollectionPage', imageAlt: 'مقالات جذع' },
+    contact: { title: 'تواصل معي - جذع', description: 'تواصل مع جذع لبدء مشروعك القادم.', imageAlt: 'تواصل مع جذع' }
 };
 
 let readingProgressHandler = null;

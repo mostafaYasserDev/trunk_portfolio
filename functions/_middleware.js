@@ -1,6 +1,130 @@
+const LISTING_SEO = {
+    '/articles': {
+        title: 'المقالات - جذع',
+        description: 'اقرأ أحدث مقالات جذع التقنية والإبداعية وحكايات تطوير الويب.',
+        imageAlt: 'مقالات جذع',
+        schemaType: 'CollectionPage'
+    },
+    '/projects': {
+        title: 'المشاريع - جذع',
+        description: 'تصفح مشاريع جذع البرمجية والإبداعية وحلول الويب المتميزة.',
+        imageAlt: 'مشاريع جذع',
+        schemaType: 'CollectionPage'
+    },
+    '/services': {
+        title: 'الخدمات - جذع',
+        description: 'استكشف خدمات جذع في تطوير الويب وتصميم الواجهات وتجربة المستخدم.',
+        imageAlt: 'خدمات جذع',
+        schemaType: 'CollectionPage'
+    },
+    '/contact': {
+        title: 'تواصل معي - جذع',
+        description: 'تواصل مع جذع لبدء مشروعك القادم.',
+        imageAlt: 'تواصل مع جذع',
+        schemaType: 'ContactPage'
+    },
+    '/donation/': {
+        title: 'الدعم والمساهمة - جذع',
+        description: 'طرق دعم ومساندة مشروع جذع للاستمرار في تقديم المحتوى والخدمات المتميزة.',
+        imageAlt: 'جذع - الدعم والمساهمة',
+        schemaType: 'WebPage'
+    }
+};
+
+function escapeHtml(unsafe) {
+    return (unsafe || '').toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function transformSeo(response, tagsToInject) {
+    return new HTMLRewriter()
+        .on('title', { element(el) { el.remove(); } })
+        .on('link[rel="canonical"]', { element(el) { el.remove(); } })
+        .on('#meta-description', { element(el) { el.remove(); } })
+        .on('#og-title', { element(el) { el.remove(); } })
+        .on('#og-description', { element(el) { el.remove(); } })
+        .on('#og-image', { element(el) { el.remove(); } })
+        .on('#og-url', { element(el) { el.remove(); } })
+        .on('#og-image-width', { element(el) { el.remove(); } })
+        .on('#og-image-height', { element(el) { el.remove(); } })
+        .on('#og-image-alt', { element(el) { el.remove(); } })
+        .on('#og-type', { element(el) { el.remove(); } })
+        .on('#twitter-title', { element(el) { el.remove(); } })
+        .on('#twitter-description', { element(el) { el.remove(); } })
+        .on('#twitter-image', { element(el) { el.remove(); } })
+        .on('#twitter-image-alt', { element(el) { el.remove(); } })
+        .on('[property="og:type"]', { element(el) { el.remove(); } })
+        .on('[property="og:locale"]', { element(el) { el.remove(); } })
+        .on('[property="og:image:width"]', { element(el) { el.remove(); } })
+        .on('[property="og:image:height"]', { element(el) { el.remove(); } })
+        .on('[property="og:image:alt"]', { element(el) { el.remove(); } })
+        .on('[name="twitter:card"]', { element(el) { el.remove(); } })
+        .on('[name="twitter:image:alt"]', { element(el) { el.remove(); } })
+        .on('script[type="application/ld+json"]', { element(el) { el.remove(); } })
+        .on('head', { element(el) { el.append(tagsToInject, { html: true }); } })
+        .transform(response);
+}
+
 export async function onRequest(context) {
     const url = new URL(context.request.url);
     const path = url.pathname;
+
+    const listingKey = path === '/donation' || path === '/donation/'
+        ? '/donation/'
+        : path.replace(/\/+$/, '') || '/';
+    const listingMeta = LISTING_SEO[listingKey];
+
+    // Listing pages use the SPA shell for their visible content, but receive
+    // complete server-rendered metadata so social crawlers do not need JS.
+    if (listingMeta) {
+        const response = await context.next();
+        const siteUrl = `${url.protocol}//${url.hostname}`;
+        const canonicalUrl = `${siteUrl}${listingKey}`;
+        const finalImage = `${siteUrl}/assets/logo.png`;
+        const pageTitle = `${escapeHtml(listingMeta.title)} - جذع`;
+        const jsonLd = {
+            '@context': 'https://schema.org',
+            '@type': listingMeta.schemaType,
+            name: listingMeta.title,
+            description: listingMeta.description,
+            url: canonicalUrl,
+            image: finalImage,
+            inLanguage: 'ar'
+        };
+        const tagsToInject = `
+        <title>${pageTitle}</title>
+        <meta name="description" content="${escapeHtml(listingMeta.description)}">
+        <meta name="author" content="مصطفى ياسر">
+        <link rel="canonical" href="${escapeHtml(canonicalUrl)}">
+        <meta property="og:title" content="${pageTitle}">
+        <meta property="og:description" content="${escapeHtml(listingMeta.description)}">
+        <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
+        <meta property="og:type" content="website">
+        <meta property="og:image" content="${finalImage}">
+        <meta property="og:image:width" content="512">
+        <meta property="og:image:height" content="512">
+        <meta property="og:image:alt" content="${escapeHtml(listingMeta.imageAlt)}">
+        <meta property="og:site_name" content="جذع">
+        <meta property="og:locale" content="ar_AR">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="${pageTitle}">
+        <meta name="twitter:description" content="${escapeHtml(listingMeta.description)}">
+        <meta name="twitter:image" content="${finalImage}">
+        <meta name="twitter:image:alt" content="${escapeHtml(listingMeta.imageAlt)}">
+        <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+        `;
+        try {
+            return transformSeo(response, tagsToInject);
+        } catch (rewriterError) {
+            const errResp = new Response(response.body, response);
+            errResp.headers.set('X-SEO-Error', rewriterError.message);
+            return errResp;
+        }
+    }
 
     let collectionName = '';
     let schemaType = '';
@@ -106,15 +230,6 @@ export async function onRequest(context) {
     };
     const getBool = (key) => docFields[key]?.booleanValue;
 
-    function escapeHtml(unsafe) {
-        return (unsafe || '').toString()
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
     // Check visibility
     if (getBool('visible') === false || getBool('active') === false) {
         // Item is hidden — redirect to listing page
@@ -211,23 +326,7 @@ export async function onRequest(context) {
 
     // Use HTMLRewriter to remove old generic tags and inject new dynamic ones
     try {
-        return new HTMLRewriter()
-            .on('title', { element(el) { el.remove(); } })
-            .on('link[rel="canonical"]', { element(el) { el.remove(); } })
-            .on('#meta-description', { element(el) { el.remove(); } })
-            .on('#og-title', { element(el) { el.remove(); } })
-            .on('#og-description', { element(el) { el.remove(); } })
-            .on('#og-image', { element(el) { el.remove(); } })
-            .on('#og-url', { element(el) { el.remove(); } })
-            .on('#twitter-title', { element(el) { el.remove(); } })
-            .on('#twitter-description', { element(el) { el.remove(); } })
-            .on('#twitter-image', { element(el) { el.remove(); } })
-            .on('[property="og:type"]', { element(el) { el.remove(); } })
-            .on('[property="og:locale"]', { element(el) { el.remove(); } })
-            .on('[name="twitter:card"]', { element(el) { el.remove(); } })
-            .on('script[type="application/ld+json"]', { element(el) { el.remove(); } })
-            .on('head', { element(el) { el.append(tagsToInject, { html: true }); } })
-            .transform(response);
+        return transformSeo(response, tagsToInject);
     } catch (rewriterError) {
         const errResp = new Response(response.body, response);
         errResp.headers.set('X-SEO-Error', rewriterError.message);

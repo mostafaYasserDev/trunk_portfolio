@@ -122,7 +122,9 @@ let homeDataLoading = false;
 let aosRefreshed = false;
 
 function isHomePath(path) {
-    return path === 'home' || path === '' || path === 'contact' || path === 'services' || path === 'projects' || path === 'articles';
+    // Only the home/contact views live inside the home shell. The content
+    // collections have their own real routes so direct links render listings.
+    return path === 'home' || path === '' || path === 'contact';
 }
 
 function getHomeShellHtml() {
@@ -162,20 +164,33 @@ const routes = {
     'all-services': renderServices,
     'all-projects': renderProjects,
     'all-articles': renderArticles,
+    'services': renderServices,
+    'projects': renderProjects,
+    'articles': renderArticles,
     'project': renderProjectDetail,
     'article': renderArticleDetail,
     'service': renderServiceDetail,
-    'contact': renderContact,
-    'services': renderHome,
-    'projects': renderHome,
-    'articles': renderHome
+    'contact': renderContact
 };
 
 function updateActiveNav(path) {
+    const activePath = ({
+        '': 'home', home: 'home', contact: 'contact',
+        services: 'services', 'all-services': 'services', service: 'services',
+        projects: 'projects', 'all-projects': 'projects', project: 'projects',
+        articles: 'articles', 'all-articles': 'articles', article: 'articles'
+    })[path] || path;
+
     document.querySelectorAll('.main-nav a').forEach(link => {
         link.classList.remove('active');
-        const href = link.getAttribute('href').slice(1);
-        if (href === path || (path === '' && href === 'home')) link.classList.add('active');
+        const rawHref = link.getAttribute('href') || '';
+        let hrefPath = rawHref;
+        if (rawHref.startsWith('#')) hrefPath = rawHref.slice(1).split('?')[0];
+        else {
+            try { hrefPath = new URL(rawHref, window.location.origin).pathname.split('/').filter(Boolean)[0] || 'home'; }
+            catch { hrefPath = rawHref; }
+        }
+        if (hrefPath === activePath || (activePath === 'home' && hrefPath === '')) link.classList.add('active');
     });
 }
 
@@ -202,7 +217,7 @@ async function router() {
 
     // Update URL in address bar for clean sharing
     if (id && (path === 'article' || path === 'project' || path === 'service')) {
-        window.history.replaceState(null, '', `/${path}/${id}`);
+        window.history.replaceState(null, '', `/${path}/${encodeURIComponent(decodeURIComponent(id))}`);
     } else if (path === 'home') {
         window.history.replaceState(null, '', '/');
     }
@@ -260,17 +275,20 @@ async function renderContact() {
 
 function renderServiceCard(data, id, compact = true) {
     const btnCls = compact ? 'btn btn-sm-card' : 'btn';
-    return `<div class="card content-in"><div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.description)}</p><a href="#service?id=${escapeHtml(data.slug || id)}" class="${btnCls}">تفاصيل الخدمة</a></div></div>`;
+    const routeId = encodeURIComponent(String(data.slug || id));
+    return `<div class="card content-in"><div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.description)}</p><a href="/service/${routeId}" class="${btnCls}">تفاصيل الخدمة</a></div></div>`;
 }
 
 function renderProjectCard(data, id) {
     const image = sanitizeMediaUrl(data.mainImage);
-    return `<div class="card content-in">${image ? `<div class="card-img-wrapper"><img src="${escapeHtml(image)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#project?id=${escapeHtml(data.slug || id)}" class="btn">عرض المشروع</a></div></div>`;
+    const routeId = encodeURIComponent(String(data.slug || id));
+    return `<div class="card content-in">${image ? `<div class="card-img-wrapper"><img src="${escapeHtml(image)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="/project/${routeId}" class="btn">عرض المشروع</a></div></div>`;
 }
 
 function renderArticleCard(data, id) {
     const image = sanitizeMediaUrl(data.coverImage);
-    return `<div class="card content-in">${image ? `<div class="card-img-wrapper"><img src="${escapeHtml(image)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="#article?id=${escapeHtml(data.slug || id)}" class="btn">اقرأ المزيد</a></div></div>`;
+    const routeId = encodeURIComponent(String(data.slug || id));
+    return `<div class="card content-in">${image ? `<div class="card-img-wrapper"><img src="${escapeHtml(image)}" class="card-img" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async"></div>` : ''}<div class="card-content"><h3 class="card-title">${escapeHtml(data.title)}</h3><p class="card-desc">${escapeHtml(data.shortDescription)}</p><a href="/article/${routeId}" class="btn">اقرأ المزيد</a></div></div>`;
 }
 
 function renderReviewCard(data) {
@@ -684,7 +702,7 @@ async function renderProjectDetail(id) {
                 const mainImage = sanitizeMediaUrl(data.mainImage);
                 const demoLink = sanitizeHttpUrl(data.demoLink);
                 const githubLink = sanitizeHttpUrl(data.githubLink);
-                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: mainImage, url: `${window.location.origin}/project/${encodeURIComponent(data.slug || id)}` });
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: mainImage, url: `${window.location.origin}/project/${encodeURIComponent(data.slug || id)}`, schemaType: 'CreativeWork', imageAlt: data.title });
                 appRoot.innerHTML = `
                     <div class="view active">
                         <div class="detail-header">
@@ -701,7 +719,7 @@ async function renderProjectDetail(id) {
                             </div>
                         </div>
                         <div style="text-align: center; margin-top: 40px;">
-                            <a href="#projects" class="btn" style="background:var(--text-muted);">العودة للمشاريع</a>
+                            <a href="/projects" class="btn" style="background:var(--text-muted);">العودة للمشاريع</a>
                         </div>
                     </div>
                 `;
@@ -726,7 +744,7 @@ async function renderArticleDetail(id) {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 const coverImage = sanitizeMediaUrl(data.coverImage);
-                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: coverImage, url: `${window.location.origin}/article/${encodeURIComponent(data.slug || id)}` });
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.shortDescription || data.title, image: coverImage, url: `${window.location.origin}/article/${encodeURIComponent(data.slug || id)}`, schemaType: 'Article', imageAlt: data.title, author: data.author || 'مصطفى ياسر', publishedAt: data.publishDate });
                 appRoot.innerHTML = `
                     <div class="view active">
                         <div class="detail-header">
@@ -737,7 +755,7 @@ async function renderArticleDetail(id) {
                         ${coverImage ? `<img src="${escapeHtml(coverImage)}" class="detail-cover" alt="${escapeHtml(data.title)}" loading="lazy" decoding="async">` : ''}
                         <div class="detail-content">${sanitizeRichHtml(data.content || '')}</div>
                         <div style="text-align: center; margin-top: 40px;">
-                            <a href="#articles" class="btn" style="background:var(--text-muted);">العودة للمقالات</a>
+                            <a href="/articles" class="btn" style="background:var(--text-muted);">العودة للمقالات</a>
                         </div>
                     </div>
                 `;
@@ -762,7 +780,7 @@ async function renderServiceDetail(id) {
         await fetchDocBySlugOrIdLive('services', id, docSnap => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                updatePageMeta({ title: `${data.title} - جذع`, description: data.description || data.title, url: `${window.location.origin}/service/${encodeURIComponent(data.slug || id)}` });
+                updatePageMeta({ title: `${data.title} - جذع`, description: data.description || data.title, url: `${window.location.origin}/service/${encodeURIComponent(data.slug || id)}`, schemaType: 'Service', imageAlt: data.title });
                 appRoot.innerHTML = `
                     <div class="view active">
                         <div class="detail-header">
@@ -773,11 +791,11 @@ async function renderServiceDetail(id) {
                             <h2>تفاصيل الخدمة</h2>
                             <p style="font-size: 1.2rem; line-height: 2;">${escapeHtml(data.description)}</p>
                             <div style="margin-top: 40px;">
-                                <a href="#contact" class="btn">اطلب الخدمة الآن</a>
+                                <a href="/contact" class="btn">اطلب الخدمة الآن</a>
                             </div>
                         </div>
                         <div style="text-align: center; margin-top: 40px;">
-                            <a href="#services" class="btn" style="background:var(--text-muted);">العودة للخدمات</a>
+                            <a href="/services" class="btn" style="background:var(--text-muted);">العودة للخدمات</a>
                         </div>
                     </div>
                 `;
@@ -791,6 +809,7 @@ function bootRouter() {
 }
 
 window.addEventListener('hashchange', router);
+window.addEventListener('popstate', router);
 let initialPath = 'home';
 if (window.location.hash) {
     initialPath = window.location.hash.slice(1).split('?id=')[0] || 'home';
