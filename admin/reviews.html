@@ -62,8 +62,11 @@
         onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login'; });
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-        const base = window.location.origin + window.location.pathname.replace(/admin\/reviews\.html$/, '');
-        document.getElementById('review-link').textContent = base + 'client/write-review.html';
+        const reviewUrl = new URL('/client/write-review.html', window.location.origin).href;
+        document.getElementById('review-link').innerHTML = `
+            <a href="${reviewUrl}" target="_blank" style="color: var(--primary); text-decoration: none;">${reviewUrl}</a>
+            <button onclick="navigator.clipboard.writeText('${reviewUrl}')" class="btn" style="padding: 5px 10px; font-size: 0.8rem; margin-right: 10px;">نسخ الرابط</button>
+        `;
 
         onSnapshot(collection(db, 'reviews'), (snapshot) => {
             const list = document.getElementById('reviews-list');

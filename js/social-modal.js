@@ -56,7 +56,7 @@ export function openSocialModal(modalId, escapeHtml) {
     const grid = overlay.querySelector('#social-modal-grid');
     grid.innerHTML = links.map((link, i) => `
         <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer"
-           class="social-modal-link" style="animation-delay:${i * 0.06}s">
+           class="social-modal-link" style="animation-delay:${i * 0.06}s" aria-label="رابط إلى ${escapeHtml(link.label)}">
             <span class="social-modal-link-icon">${renderModalIcon(link, escapeHtml)}</span>
             <span class="social-modal-link-label">${escapeHtml(link.label)}</span>
         </a>`).join('');
@@ -74,9 +74,12 @@ export function closeSocialModal() {
 }
 
 export function bindSocialModals(root = document, escapeHtml) {
-    root.querySelectorAll('[data-social-modal]').forEach((btn) => {
-        if (btn.dataset.bound) return;
-        btn.dataset.bound = '1';
-        btn.addEventListener('click', () => openSocialModal(btn.dataset.socialModal, escapeHtml));
+    if (root.dataset.socialBound) return;
+    root.dataset.socialBound = '1';
+    root.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-social-modal]');
+        if (btn) {
+            openSocialModal(btn.dataset.socialModal, escapeHtml);
+        }
     });
 }

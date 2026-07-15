@@ -30,7 +30,7 @@
         <h1>إدارة طرق الدعم</h1>
         
         <div class="card">
-            <h3>إضافة طريقة دعم جديدة</h3>
+            <h3 id="form-title">إضافة طريقة دعم جديدة</h3>
             <form id="add-donation-form">
                 <input type="hidden" id="don-id">
                 <div class="form-grid-2">
@@ -96,7 +96,8 @@
 
     <script src="../js/admin.js"></script>
     <script type="module">
-        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, onSnapshot, deleteDoc, doc } from '../firebase/firebase.js';
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
+        import { translateFirebaseError } from '../js/admin-ui.js';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -210,6 +211,7 @@
             }
 
             submitBtn.textContent = 'تحديث الطريقة';
+            document.getElementById('form-title').textContent = 'تعديل طريقة الدعم';
             cancelBtn.style.display = 'inline-flex';
             document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
         };
@@ -219,6 +221,7 @@
             currentImageBase64 = '';
             previewDiv.innerHTML = `<i class="fas fa-image" style="color:#ccc;"></i>`;
             submitBtn.textContent = 'حفظ طريقة الدعم';
+            document.getElementById('form-title').textContent = 'إضافة طريقة دعم جديدة';
             cancelBtn.style.display = 'none';
             form.reset();
         });
@@ -252,7 +255,7 @@
                 cancelBtn.click(); // Reset form
             } catch (err) {
                 console.error(err);
-                alert('حدث خطأ أثناء الحفظ');
+                alert(translateFirebaseError(err));
             } finally {
                 submitBtn.disabled = false;
             }

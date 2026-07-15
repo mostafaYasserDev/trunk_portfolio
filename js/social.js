@@ -136,7 +136,7 @@ export function buildSocialHtml(data, escapeHtml) {
         html += '<div class="social-links social-links--primary">';
         primaryLinks.forEach(({ key, url }) => {
             const label = SOCIAL_PRESETS[key].label;
-            html += `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${renderPrimaryIcon(key)}<span>${escapeHtml(label)}</span></a>`;
+            html += `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="رابط إلى ${escapeHtml(label)}">${renderPrimaryIcon(key)}<span>${escapeHtml(label)}</span></a>`;
         });
 
         if (extraLinks.length) {

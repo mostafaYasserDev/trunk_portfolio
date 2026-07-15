@@ -42,20 +42,8 @@
     <script type="module">
         const errorMessage = document.getElementById('error-message');
 
-        function showAuthError(error) {
-            console.error(error);
-            const code = error?.code || '';
-            const messages = {
-                'auth/unauthorized-domain': 'نطاق الموقع غير مسموح في Firebase. أضف نطاق Netlify أو GitHub Pages في Firebase Console → Authentication → Settings → Authorized domains.',
-                'auth/invalid-credential': 'بيانات الدخول غير صحيحة.',
-                'auth/wrong-password': 'بيانات الدخول غير صحيحة.',
-                'auth/user-not-found': 'بيانات الدخول غير صحيحة.',
-                'auth/too-many-requests': 'محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً.',
-                'auth/network-request-failed': 'مشكلة في الاتصال. تحقق من الإنترنت وحاول مجدداً.'
-            };
-            errorMessage.textContent = messages[code] || 'تعذر تسجيل الدخول. حاول مجدداً.';
-            errorMessage.style.color = '';
-        }
+        import { translateFirebaseError } from '../js/admin-ui.js';
+        const errorMessage = document.getElementById('error-message');
 
         try {
             const { auth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } =
@@ -82,7 +70,8 @@
                 try {
                     await signInWithEmailAndPassword(auth, emailInput.value, pwdInput.value);
                 } catch (error) {
-                    showAuthError(error);
+                    errorMessage.textContent = translateFirebaseError(error);
+                    errorMessage.style.color = 'var(--error-color, red)';
                 }
             });
 
@@ -97,7 +86,8 @@
                     errorMessage.textContent = 'تم إرسال رابط إعادة التعيين.';
                     errorMessage.style.color = 'var(--success)';
                 } catch (error) {
-                    showAuthError(error);
+                    errorMessage.textContent = translateFirebaseError(error);
+                    errorMessage.style.color = 'var(--error-color, red)';
                 }
             });
         } catch (error) {

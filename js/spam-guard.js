@@ -34,9 +34,10 @@ export function createSpamGuard(formKey, options = {}) {
     function attachHoneypot(form) {
         if (form.querySelector(`[name="${opts.honeypotName}"]`)) return;
         const hp = document.createElement('div');
-        hp.className = 'spam-honeypot';
+        hp.className = 'spam-honeypot visually-hidden';
         hp.setAttribute('aria-hidden', 'true');
-        hp.innerHTML = `<label>لا تملأ هذا الحقل<input type="text" name="${opts.honeypotName}" tabindex="-1" autocomplete="off"></label>`;
+        hp.tabIndex = -1;
+        hp.innerHTML = `<label tabindex="-1" aria-hidden="true">لا تملأ هذا الحقل<input type="text" name="${opts.honeypotName}" tabindex="-1" autocomplete="off" aria-hidden="true"></label>`;
         form.prepend(hp);
     }
 

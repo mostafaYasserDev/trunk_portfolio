@@ -85,7 +85,7 @@ body {
   overflow-y: auto;
   z-index: 1100;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s ease;
 }
 
 .sidebar-brand {
@@ -928,14 +928,15 @@ tbody tr:hover {
   .sidebar {
     position: fixed;
     top: 0;
-    right: 0;
+    right: -100%;
     height: 100vh;
-    transform: translateX(100%);
     width: min(280px, 85vw);
+    transition: right 0.3s ease;
+    z-index: 9999;
   }
 
   .sidebar.open {
-    transform: translateX(0);
+    right: 0 !important;
   }
 
   .main-content > h1 {

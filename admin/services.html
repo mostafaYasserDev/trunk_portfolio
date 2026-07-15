@@ -29,8 +29,9 @@
         <h1>إدارة الخدمات</h1>
         
         <div class="card">
-            <h3>إضافة خدمة جديدة</h3>
+            <h3 id="form-title">إضافة خدمة جديدة</h3>
             <form id="add-service-form">
+                <input type="hidden" id="edit-id">
                 <div class="form-group">
                     <label>عنوان الخدمة</label>
                     <input type="text" id="service-title" class="form-control" required>
@@ -49,7 +50,10 @@
                         خدمة مميزة (تظهر في الرئيسية)
                     </label>
                 </div>
-                <button type="submit" class="btn">إضافة</button>
+                <div class="form-actions" style="margin-top: 15px;">
+                    <button type="submit" class="btn" id="submit-btn">إضافة</button>
+                    <button type="button" class="btn btn-danger" id="cancel-edit-btn" style="display:none;">إلغاء التعديل</button>
+                </div>
             </form>
         </div>
 
@@ -74,7 +78,8 @@
 
     <script src="../js/admin.js"></script>
     <script type="module">
-        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, onSnapshot, deleteDoc, doc, query, where, getDocs } from '../firebase/firebase.js';
+        import { auth, onAuthStateChanged, signOut, db, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs } from '../firebase/firebase.js';
+        import { translateFirebaseError } from '../js/admin-ui.js';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -82,21 +87,31 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
+        let currentServices = {};
+
         // Real-time Load services
-        onSnapshot(collection(db, "services"), (snapshot) => {
+        const servicesQuery = query(collection(db, "services"), limit(20));
+        onSnapshot(servicesQuery, (snapshot) => {
             const servicesList = document.getElementById('services-list');
             servicesList.innerHTML = '';
+            currentServices = {};
             if (snapshot.empty) {
                 servicesList.innerHTML = '<tr><td colspan="3" style="text-align: center;">لا توجد خدمات.</td></tr>';
                 return;
             }
-            snapshot.forEach((document) => {
-                const data = document.data();
+            snapshot.forEach((documentSnap) => {
+                const data = documentSnap.data();
+                currentServices[documentSnap.id] = data;
                 servicesList.innerHTML += `
                     <tr>
                         <td>${data.title}</td>
                         <td>${data.featured ? '✅ نعم' : '❌ لا'}</td>
-                        <td><div class="table-actions"><button class="btn btn-danger btn-sm" onclick="deleteService('${document.id}')">حذف</button></div></td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn btn-sm" onclick="editService('${documentSnap.id}')">تعديل</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteService('${documentSnap.id}')">حذف</button>
+                            </div>
+                        </td>
                     </tr>
                 `;
             });
@@ -108,6 +123,29 @@
             }
         };
 
+        window.editService = (id) => {
+            const data = currentServices[id];
+            if (!data) return;
+            document.getElementById('edit-id').value = id;
+            document.getElementById('service-title').value = data.title || '';
+            document.getElementById('service-desc').value = data.description || '';
+            document.getElementById('service-slug').value = data.slug || '';
+            document.getElementById('service-featured').checked = data.featured || false;
+            
+            document.getElementById('form-title').textContent = 'تعديل الخدمة';
+            document.getElementById('submit-btn').textContent = 'حفظ التعديل';
+            document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
+            document.getElementById('add-service-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('form-title').textContent = 'إضافة خدمة جديدة';
+            document.getElementById('submit-btn').textContent = 'إضافة';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+        });
+
         // Sanitize Slug input automatically
         document.getElementById('service-slug').addEventListener('input', function() {
             this.value = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+/, '');
@@ -116,34 +154,54 @@
         // Add service
         document.getElementById('add-service-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const title = document.getElementById('service-title').value;
-            const desc = document.getElementById('service-desc').value;
+            const title = document.getElementById('service-title').value.trim();
+            const desc = document.getElementById('service-desc').value.trim();
             let targetSlug = document.getElementById('service-slug').value.replace(/-+$/, '');
             const featured = document.getElementById('service-featured').checked;
             const submitBtn = e.target.querySelector('button');
             
+            if (!title) return alert('يُرجى إدخال عنوان الخدمة.');
+            if (!desc) return alert('يُرجى إدخال الوصف.');
             if (!targetSlug) return alert('يُرجى إدخال الرابط (Slug).');
             
             submitBtn.disabled = true;
 
-            try {
-                // Check Slug uniqueness
-                const slugQuery = query(collection(db, "services"), where("slug", "==", targetSlug));
-                const slugSnapshot = await getDocs(slugQuery);
-                if (!slugSnapshot.empty) {
-                    targetSlug = targetSlug + '-' + Date.now().toString().slice(-4);
-                }
+            const editId = document.getElementById('edit-id').value;
 
-                await addDoc(collection(db, "services"), {
-                    title: title,
-                    slug: targetSlug,
-                    description: desc,
-                    featured: featured
-                });
-                document.getElementById('add-service-form').reset();
+            try {
+                if (editId) {
+                    const slugQuery = query(collection(db, "services"), where("slug", "==", targetSlug));
+                    const slugSnapshot = await getDocs(slugQuery);
+                    let isDuplicate = false;
+                    slugSnapshot.forEach(d => { if (d.id !== editId) isDuplicate = true; });
+                    if (isDuplicate) {
+                        targetSlug = targetSlug + '-' + Date.now().toString().slice(-4);
+                    }
+                    await updateDoc(doc(db, "services", editId), {
+                        title: title,
+                        slug: targetSlug,
+                        description: desc,
+                        featured: featured
+                    });
+                    alert('تم تحديث الخدمة بنجاح');
+                } else {
+                    const slugQuery = query(collection(db, "services"), where("slug", "==", targetSlug));
+                    const slugSnapshot = await getDocs(slugQuery);
+                    if (!slugSnapshot.empty) {
+                        targetSlug = targetSlug + '-' + Date.now().toString().slice(-4);
+                    }
+                    await addDoc(collection(db, "services"), {
+                        title: title,
+                        slug: targetSlug,
+                        description: desc,
+                        featured: featured
+                    });
+                    alert('تمت إضافة الخدمة بنجاح');
+                }
+                document.getElementById('cancel-edit-btn').click();
             } catch (err) {
                 console.error(err);
-                alert('حدث خطأ أثناء الإضافة');
+                alert(translateFirebaseError(err));
             } finally {
                 submitBtn.disabled = false;
             }

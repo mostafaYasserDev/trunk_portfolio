@@ -120,7 +120,7 @@ let homeDataLoading = false;
 let aosRefreshed = false;
 
 function isHomePath(path) {
-    return path === 'home' || path === '' || path === 'contact';
+    return path === 'home' || path === '' || path === 'contact' || path === 'services' || path === 'projects' || path === 'articles';
 }
 
 function getHomeShellHtml() {
@@ -142,9 +142,11 @@ function applyContactHtml(html) {
     bindSocialModals(document, escapeHtml);
 }
 
+let lastContactHtml = '';
+
 function applyContactSnap(snap) {
-    const html = snap.exists() ? buildContactHtml(snap.data()) : '<p>معلومات التواصل غير متوفرة.</p>';
-    applyContactHtml(html);
+    lastContactHtml = snap.exists() ? buildContactHtml(snap.data()) : '<p>معلومات التواصل غير متوفرة.</p>';
+    applyContactHtml(lastContactHtml);
 }
 
 // Load contact info live (cache + network refresh)
@@ -155,13 +157,16 @@ fetchDocLive(doc(db, 'settings', 'contact'), applyContactSnap).catch(() => {
 const routes = {
     '': renderHome,
     'home': renderHome,
-    'services': renderServices,
-    'projects': renderProjects,
-    'articles': renderArticles,
+    'all-services': renderServices,
+    'all-projects': renderProjects,
+    'all-articles': renderArticles,
     'project': renderProjectDetail,
     'article': renderArticleDetail,
     'service': renderServiceDetail,
-    'contact': renderContact
+    'contact': renderContact,
+    'services': renderHome,
+    'projects': renderHome,
+    'articles': renderHome
 };
 
 function updateActiveNav(path) {
@@ -205,16 +210,20 @@ async function router() {
     removeReadingProgress();
     updateActiveNav(path);
 
-    if (path === 'contact' && document.getElementById('home-view')) {
-        updatePageMeta(PAGE_META.contact);
-        setTimeout(() => {
-            document.getElementById('contact-sec')?.scrollIntoView({ behavior: 'smooth' });
-        }, 50);
-        return;
+    if (isHome && document.getElementById('home-view')) {
+        if (path !== 'home' && path !== '') {
+            updatePageMeta(PAGE_META[path] || PAGE_META.home);
+            setTimeout(() => {
+                const targetId = path === 'contact' ? 'contact' : path;
+                document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+            }, 50);
+            return;
+        }
     }
 
+    aosRefreshed = false;
+
     if (!isHome) {
-        aosRefreshed = false;
         appRoot.innerHTML = LOADER_HTML;
         window.scrollTo({ top: 0 });
     }
@@ -231,10 +240,14 @@ async function router() {
         updatePageMeta(PAGE_META.home);
     }
 
+    setTimeout(refreshAosOnce, 60);
+    
     if (isHome) {
-        setTimeout(refreshAosOnce, 60);
-        if (path === 'contact') {
-            setTimeout(() => document.getElementById('contact-sec')?.scrollIntoView({ behavior: 'smooth' }), 120);
+        if (path !== 'home' && path !== '') {
+            setTimeout(() => {
+                const targetId = path === 'contact' ? 'contact' : path;
+                document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+            }, 120);
         }
     }
 }
@@ -290,7 +303,7 @@ function applyGeneralSettings(snap) {
     const data = snap.data();
     const cvBtn = document.getElementById('cv-download-btn');
     if (cvBtn) {
-        if (data.cvData) {
+        if (data.cvData && data.cvData.trim() !== '' && data.cvData.trim() !== '#') {
             cvBtn.href = data.cvData;
             cvBtn.style.display = 'inline-flex';
         } else {
@@ -344,8 +357,13 @@ function loadHomeData() {
         if (el) el.innerHTML = showError('تعذر تحميل الخدمات.');
     });
 
-    const projectsQ = fetchDocsLive(query(collection(db, 'projects'), where('featured', '==', true), limit(3)), snap => {
-        fillQueryGrid('projects-grid', snap, renderProjectCard, 'projects');
+    const projectsQ = fetchDocsLive(query(collection(db, 'projects'), where('featured', '==', true)), snap => {
+        let html = '';
+        const docs = [];
+        snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+        docs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        docs.slice(0, 3).forEach(d => { html += renderProjectCard(d, d.id); });
+        document.getElementById('projects-grid').innerHTML = html || emptyState('projects');
     }).catch(() => {
         const el = document.getElementById('projects-grid');
         if (el) el.innerHTML = showError('تعذر تحميل المشاريع.');
@@ -386,6 +404,8 @@ function bindHomeContactForm() {
     contactForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = contactForm.querySelector('button[type="submit"]');
+        if (btn.disabled) return;
+        btn.disabled = true;
         const statusEl = document.getElementById('form-status');
         const payload = {
             name: sanitizeText(document.getElementById('contact-name').value, 100),
@@ -398,16 +418,17 @@ function bindHomeContactForm() {
             statusEl.textContent = check.message;
             statusEl.className = 'form-status error';
             statusEl.style.display = 'block';
+            btn.disabled = false;
             return;
         }
         if (!isValidEmail(payload.email)) {
             statusEl.textContent = 'أدخل بريداً إلكترونياً صحيحاً.';
             statusEl.className = 'form-status error';
             statusEl.style.display = 'block';
+            btn.disabled = false;
             return;
         }
 
-        btn.disabled = true;
         btn.textContent = 'جاري الإرسال...';
         statusEl.className = 'form-status';
         statusEl.style.display = 'none';
@@ -445,6 +466,7 @@ async function renderHome() {
     if (!document.getElementById('home-view')) {
         appRoot.innerHTML = getHomeShellHtml();
         bindHomeContactForm();
+        if (lastContactHtml) applyContactHtml(lastContactHtml);
     } else {
         bindHomeContactForm();
     }
@@ -487,7 +509,7 @@ async function renderProjects() {
             </section>
         </div>
     `;
-    await setupPagination('projects', 'all-projects-grid', renderProjectCard, 'projects');
+    await setupPagination('projects', 'all-projects-grid', renderProjectCard, 'projects', orderBy('createdAt', 'desc'));
 }
 
 async function renderArticles() {
@@ -730,9 +752,8 @@ async function renderProjectDetail(id) {
                         <div class="detail-content">
                             <div>${data.fullDescription || ''}</div>
                             <div style="margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
-                                ${data.demoLink ? `<a href="${escapeHtml(data.demoLink)}" target="_blank" rel="noopener" class="btn">معاينة حية</a>` : ''}
-                                ${data.githubLink ? `<a href="${escapeHtml(data.githubLink)}" target="_blank" rel="noopener" class="btn" style="background:var(--text-main);">الكود المصدري</a>` : ''}
-                                ${!data.demoLink && !data.githubLink ? '' : ''}
+                                ${data.demoLink && data.demoLink !== 'undefined' ? `<a href="${escapeHtml(data.demoLink)}" target="_blank" rel="noopener" class="btn">معاينة حية</a>` : ''}
+                                ${data.githubLink && data.githubLink !== 'undefined' ? `<a href="${escapeHtml(data.githubLink)}" target="_blank" rel="noopener" class="btn" style="background:var(--text-main);">الكود المصدري</a>` : ''}
                             </div>
                         </div>
                         <div style="text-align: center; margin-top: 40px;">

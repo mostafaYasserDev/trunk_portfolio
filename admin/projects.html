@@ -248,6 +248,7 @@
     <script src="../vendor/quill/quill.min.js"></script>
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs } from '../firebase/firebase.js';
+        import { translateFirebaseError } from '../js/admin-ui.js';
 
         onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login'; });
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
@@ -304,8 +305,8 @@
         quillProj.root.style.textAlign = 'right';
 
         // ── Bind custom toolbar button clicks directly ──
-        document.getElementById('proj-btn-cta').addEventListener('click', () => openCtaModal());
-        document.getElementById('proj-btn-html').addEventListener('click', () => openHtmlModal());
+        document.getElementById('proj-btn-cta').addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); openCtaModal(); });
+        document.getElementById('proj-btn-html').addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); openHtmlModal(); });
 
         // ═══════════════════ CTA BUTTON MODAL ═══════════════════
         const ctaModal      = document.getElementById('cta-btn-modal');
@@ -324,12 +325,12 @@
         });
 
         function openCtaModal() {
-            ctaRange = quillProj.getSelection();
+            if (!quillProj) return;
+            ctaRange = quillProj.getSelection(true);
             ctaTextInput.value = ''; ctaUrlInput.value = '';
             ctaModal.classList.add('active');
             setTimeout(() => ctaTextInput.focus(), 80);
         }
-        document.getElementById('cta-cancel-btn').addEventListener('click', () => ctaModal.classList.remove('active'));
         ctaModal.addEventListener('click', (e) => { if (e.target === ctaModal) ctaModal.classList.remove('active'); });
         document.getElementById('cta-insert-btn').addEventListener('click', () => {
             const text = ctaTextInput.value.trim();
@@ -376,7 +377,7 @@
                 htmlCodeInput.value = blot.statics.value(blot.domNode);
             } else {
                 htmlCodeInput.value = '';
-                htmlRange = quillProj.getSelection();
+                htmlRange = quillProj.getSelection(true);
             }
             updateHtmlPreview();
             htmlModal.classList.add('active');
@@ -489,16 +490,22 @@
             });
         }
 
-        onSnapshot(collection(db, 'projects'), (snapshot) => {
+        const projectsQuery = query(collection(db, 'projects'), orderBy('createdAt', 'desc'), limit(20));
+        onSnapshot(projectsQuery, (snapshot) => {
             const list = document.getElementById('projects-list');
             if (snapshot.empty) {
                 list.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد مشاريع بعد.</td></tr>';
                 return;
             }
             list.innerHTML = '';
+            const docsData = [];
             snapshot.forEach((docSnap) => {
-                const data = docSnap.data();
-                const id = docSnap.id;
+                docsData.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            docsData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            
+            docsData.forEach((data) => {
+                const id = data.id;
                 const safeData = encodeURIComponent(JSON.stringify({
                     id, title: data.title, slug: data.slug || '', technologies: data.technologies,
                     shortDescription: data.shortDescription, fullDescription: data.fullDescription,
@@ -559,6 +566,12 @@
             e.preventDefault();
 
             let targetSlug = slugInput.value.replace(/-+$/, ''); // Remove trailing dash
+            const titleVal = titleInput.value.trim();
+            if (!titleVal) {
+                msgDiv.textContent = 'يُرجى إدخال عنوان المشروع.';
+                msgDiv.className = 'msg-error';
+                return;
+            }
             if (!targetSlug) {
                 msgDiv.textContent = 'يُرجى إدخال الرابط (Slug).';
                 msgDiv.className = 'msg-error';
@@ -576,7 +589,7 @@
                     progressDiv.textContent = '';
                 }
                 const htmlContent = quillProj.root.innerHTML;
-                if (htmlContent === '<p><br></p>' || !htmlContent.trim()) {
+                if (quillProj.getText().trim().length === 0) {
                     msgDiv.textContent = 'الوصف الكامل لا يمكن أن يكون فارغاً.';
                     msgDiv.className = 'msg-error';
                     submitBtn.disabled = false;
@@ -584,7 +597,7 @@
                 }
                 
                 const projectData = {
-                    title: titleInput.value.trim(),
+                    title: titleVal,
                     slug: targetSlug,
                     technologies: techInput.value.trim(),
                     shortDescription: shortInput.value.trim(),
@@ -600,7 +613,7 @@
                 const slugSnapshot = await getDocs(slugQuery);
                 let isDuplicate = false;
                 slugSnapshot.forEach(docSnap => {
-                    if (docSnap.id !== idInput.value) isDuplicate = true; // If another doc has this slug
+                    if (docSnap.id !== idInput.value) isDuplicate = true;
                 });
 
                 if (isDuplicate) {
@@ -612,6 +625,7 @@
                     await updateDoc(doc(db, 'projects', idInput.value), projectData);
                     msgDiv.textContent = 'تم تحديث المشروع بنجاح!';
                 } else {
+                    projectData.createdAt = Date.now();
                     await addDoc(collection(db, 'projects'), projectData);
                     msgDiv.textContent = 'تمت إضافة المشروع بنجاح!';
                 }
@@ -619,7 +633,7 @@
                 cancelBtn.click();
                 setTimeout(() => msgDiv.textContent = '', 3000);
             } catch (error) {
-                msgDiv.textContent = 'حدث خطأ. تأكد أن حجم الصورة ليس ضخماً.';
+                msgDiv.textContent = translateFirebaseError(error);
                 msgDiv.className = 'msg-error';
             } finally {
                 submitBtn.disabled = false;

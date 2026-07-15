@@ -132,6 +132,7 @@
     <script src="../js/admin.js"></script>
     <script type="module">
         import { auth, onAuthStateChanged, signOut, updateEmail, updatePassword, db, doc, getDoc, setDoc } from '../firebase/firebase.js';
+        import { translateFirebaseError } from '../js/admin-ui.js';
         import { normalizeContactSocial, DEFAULT_ABOUT_TEXT } from '../js/social.js';
         import { initExtraSocialLinksManager, getExtraSocialLinksFromManager } from '../js/admin-settings.js';
 
@@ -152,7 +153,7 @@
                 msg.textContent = 'تم تحديث البريد الإلكتروني بنجاح.';
                 msg.className = 'msg success';
             } catch (error) {
-                msg.textContent = 'حدث خطأ. قد تحتاج لتسجيل الدخول مجدداً.';
+                msg.textContent = translateFirebaseError(error);
                 msg.className = 'msg error';
             }
         });
@@ -166,7 +167,7 @@
                 msg.className = 'msg success';
                 document.getElementById('password-form').reset();
             } catch (error) {
-                msg.textContent = 'حدث خطأ. قد تحتاج لتسجيل الدخول مجدداً.';
+                msg.textContent = translateFirebaseError(error);
                 msg.className = 'msg error';
             }
         });
@@ -213,7 +214,7 @@
                 msg.textContent = 'تم حفظ معلومات التواصل.';
                 msg.className = 'msg success';
             } catch (error) {
-                msg.textContent = 'حدث خطأ أثناء الحفظ.';
+                msg.textContent = translateFirebaseError(error);
                 msg.className = 'msg error';
             }
         });
@@ -380,7 +381,7 @@
                 msg.className = 'msg success';
             } catch (error) {
                 console.error(error);
-                msg.textContent = error.message || 'حدث خطأ أثناء الحفظ.';
+                msg.textContent = translateFirebaseError(error);
                 msg.className = 'msg error';
             } finally {
                 submitBtn.disabled = false;

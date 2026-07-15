@@ -225,6 +225,7 @@
 
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs } from '../firebase/firebase.js';
+        import { translateFirebaseError } from '../js/admin-ui.js';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';
@@ -295,8 +296,8 @@
         }
 
         // ── Bind custom toolbar button clicks directly ──
-        document.getElementById('art-btn-cta').addEventListener('click', () => openCtaModal());
-        document.getElementById('art-btn-html').addEventListener('click', () => openHtmlModal());
+        document.getElementById('art-btn-cta').addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); openCtaModal(); });
+        document.getElementById('art-btn-html').addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); openHtmlModal(); });
 
         // ═══════════════════ CTA BUTTON MODAL ═══════════════════
         const ctaModal      = document.getElementById('cta-btn-modal');
@@ -316,7 +317,7 @@
 
         function openCtaModal() {
             if (!quill) return;
-            ctaRange = quill.getSelection();
+            ctaRange = quill.getSelection(true);
             ctaTextInput.value = '';
             ctaUrlInput.value  = '';
             ctaModal.classList.add('active');
@@ -377,7 +378,7 @@
                 htmlCodeInput.value = blot.statics.value(blot.domNode);
             } else {
                 htmlCodeInput.value = '';
-                htmlRange = quill.getSelection();
+                htmlRange = quill.getSelection(true);
             }
             updateHtmlPreview();
             htmlModal.classList.add('active');
@@ -499,7 +500,8 @@
         }
 
         // Real-time articles listener
-        onSnapshot(collection(db, "articles"), (snapshot) => {
+        const articlesQuery = query(collection(db, "articles"), orderBy("publishDate", "desc"), limit(20));
+        onSnapshot(articlesQuery, (snapshot) => {
             const list = document.getElementById('articles-list');
             if(snapshot.empty) {
                 list.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد مقالات بعد.</td></tr>';
@@ -576,8 +578,16 @@
                 msgDiv.className = 'msg error';
                 return;
             }
+
+            const titleVal = titleInput.value.trim();
+            if (!titleVal) {
+                msgDiv.textContent = 'يُرجى إدخال عنوان المقال.';
+                msgDiv.style.color = 'red';
+                return;
+            }
+
             const htmlContent = quill.root.innerHTML;
-            if (htmlContent === '<p><br></p>') {
+            if (quill.getText().trim().length === 0) {
                 msgDiv.textContent = 'المحتوى لا يمكن أن يكون فارغاً.';
                 msgDiv.style.color = 'red';
                 return;
@@ -606,7 +616,7 @@
                 }
 
                 const articleData = {
-                    title: titleInput.value,
+                    title: titleVal,
                     slug: targetSlug,
                     shortDescription: descInput.value,
                     content: htmlContent, // Save as rich HTML
@@ -646,7 +656,7 @@
 
             } catch (error) {
                 console.error(error);
-                msgDiv.textContent = 'حدث خطأ. تأكد أن حجم الصورة ليس ضخماً جداً.';
+                msgDiv.textContent = translateFirebaseError(error);
                 msgDiv.style.color = 'red';
             } finally {
                 submitBtn.disabled = false;
