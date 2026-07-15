@@ -198,10 +198,10 @@
 
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script type="module">
-        import { db, collection, getDocs, getDocsFromCache, query, where } from '../firebase/public.js';
-        import { buildContactHtml, escapeHtml } from './js/helpers.js';
-        import { doc, getDoc, getDocFromCache } from '../firebase/public.js';
-        import { sanitizeHttpUrl, sanitizeIconClass, sanitizeMediaUrl } from './js/security.js';
+        import { db, collection, getDocs, getDocsFromCache, query, where } from '/firebase/public.js?v=13';
+        import { buildContactHtml, escapeHtml } from '/js/helpers.js?v=13';
+        import { doc, getDoc, getDocFromCache } from '/firebase/public.js?v=13';
+        import { sanitizeHttpUrl, sanitizeIconClass, sanitizeMediaUrl } from '/js/security.js?v=13';
         
         document.addEventListener('DOMContentLoaded', () => {
             AOS.init({ once: true, duration: 800 });
@@ -252,6 +252,12 @@
         async function loadDonations() {
             const grid = document.getElementById('donations-grid');
 
+            const loadingStateHtml = `
+                <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+            `;
+
             const emptyStateHtml = `
                 <div class="empty-state glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; border-radius: 20px;">
                     <div class="empty-state-emoji" style="font-size: 4rem; margin-bottom: 15px;">🌱</div>
@@ -262,8 +268,30 @@
                 </div>
             `;
 
+            const loadErrorHtml = `
+                <div class="empty-state glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; border-radius: 20px;">
+                    <div aria-hidden="true" style="font-size: 3rem; margin-bottom: 12px;">🌱</div>
+                    <h3 style="color: var(--primary); margin-bottom: 10px;">تعذر تحميل وسائل الدعم الآن</h3>
+                    <p style="color: var(--text-light); margin-bottom: 18px;">تحقق من اتصالك ثم حاول مرة أخرى.</p>
+                    <button type="button" class="btn" data-retry-donations>إعادة المحاولة</button>
+                </div>
+            `;
+
+            grid.innerHTML = loadingStateHtml;
+
+            let hasRendered = false;
+            let loadingTimer;
+
+            const showLoadError = () => {
+                if (hasRendered) return;
+                grid.innerHTML = loadErrorHtml;
+                grid.querySelector('[data-retry-donations]')?.addEventListener('click', loadDonations, { once: true });
+            };
+
             try {
                 const renderDonations = (querySnapshot) => {
+                    hasRendered = true;
+                    clearTimeout(loadingTimer);
                     let activeDonationsCount = 0;
                     let html = '';
                     if (!querySnapshot.empty) {
@@ -293,29 +321,36 @@
                 };
 
                 const donRef = query(collection(db, 'donations'), where('active', '==', true));
-                
-                // Try cache first
+
+                // Never leave the skeleton visible forever if Firestore is unavailable.
+                loadingTimer = setTimeout(showLoadError, 8000);
+
+                // Try the local cache first for a fast repeat visit.
                 let cachedStr = null;
-                getDocsFromCache(donRef).then(cacheSnap => {
+                try {
+                    const cacheSnap = await getDocsFromCache(donRef);
                     if (!cacheSnap.empty) {
                         cachedStr = JSON.stringify(cacheSnap.docs.map(d => ({id: d.id, data: d.data()})));
                         renderDonations(cacheSnap);
                     }
-                }).catch(() => {});
+                } catch (_) {}
 
-                // Then fetch from server
-                getDocs(donRef).then(serverSnap => {
-                    if (!serverSnap.metadata.fromCache) {
-                        const serverStr = JSON.stringify(serverSnap.docs.map(d => ({id: d.id, data: d.data()})));
-                        if (cachedStr !== serverStr) renderDonations(serverSnap);
+                // Then refresh from Firestore and handle failures explicitly.
+                try {
+                    const serverSnap = await getDocs(donRef);
+                    const serverStr = JSON.stringify(serverSnap.docs.map(d => ({id: d.id, data: d.data()})));
+                    if (!hasRendered || cachedStr !== serverStr || !serverSnap.metadata.fromCache) {
+                        renderDonations(serverSnap);
                     }
-                });
+                } catch (error) {
+                    console.error('Error loading donations:', error);
+                    showLoadError();
+                }
 
             } catch (error) {
-                console.error("Error loading donations: ", error);
-                if (grid.innerHTML.includes('skeleton-card')) {
-                    grid.innerHTML = emptyStateHtml;
-                }
+                console.error('Error loading donations:', error);
+                clearTimeout(loadingTimer);
+                showLoadError();
             }
         }
     </script>

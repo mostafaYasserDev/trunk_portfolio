@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jidhe-v12';
+const CACHE_NAME = 'jidhe-v13';
 const ASSETS = [
     './',
     './index.html',
@@ -50,6 +50,25 @@ self.addEventListener('fetch', (e) => {
 
     // Skip Vercel serverless API routes — always fetch fresh
     if (url.pathname.startsWith('/api/')) return;
+
+    // HTML navigations must prefer the network so an old cached page cannot
+    // keep referencing stale JavaScript modules after a deployment.
+    if (e.request.mode === 'navigate') {
+        e.respondWith(
+            fetch(e.request).then(response => {
+                if (response.ok) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+                }
+                return response;
+            }).catch(async () => (
+                await caches.match(e.request)
+                || await caches.match('./index.html')
+                || new Response('', { status: 503, statusText: 'Offline' })
+            ))
+        );
+        return;
+    }
 
     e.respondWith(
         caches.match(e.request).then(cached => {
