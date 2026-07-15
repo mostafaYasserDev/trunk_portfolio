@@ -1,5 +1,7 @@
 .git
 .git/**
+.wrangler
+.wrangler/**
 functions
 functions/**
 test_unzipped

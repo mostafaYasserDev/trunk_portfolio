@@ -56,7 +56,7 @@
     <script src="../js/admin.js"></script>
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, updateDoc, deleteDoc, doc, onSnapshot } from '../firebase/firebase.js';
-        import { escapeHtml } from '../js/security.js';
+        import { escapeHtml } from '../js/security.js?v=12';
         import { renderLongTextCell, bindViewTextButtons } from '../js/admin-ui.js';
 
         onAuthStateChanged(auth, (user) => { if (!user) window.location.href = 'login'; });

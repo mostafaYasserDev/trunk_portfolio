@@ -80,7 +80,7 @@
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs, limit } from '../firebase/firebase.js';
         import { translateFirebaseError } from '../js/admin-ui.js';
-        import { escapeHtml, sanitizePlainText } from '../js/security.js';
+        import { escapeHtml, sanitizePlainText } from '../js/security.js?v=12';
 
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = 'login';

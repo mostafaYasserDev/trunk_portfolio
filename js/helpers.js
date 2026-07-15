@@ -1,5 +1,5 @@
 import { buildSocialHtml as buildSocialFromData, buildAboutHtml, DEFAULT_ABOUT_TEXT } from './social.js';
-import { escapeHtml } from './security.js';
+import { escapeHtml } from './security.js?v=12';
 
 export { buildAboutHtml, DEFAULT_ABOUT_TEXT, escapeHtml };
 

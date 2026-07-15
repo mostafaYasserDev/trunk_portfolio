@@ -1,4 +1,4 @@
-import { sanitizeMediaUrl } from './security.js';
+import { sanitizeMediaUrl } from './security.js?v=12';
 
 /**
  * نافذة روابط التواصل الإضافية

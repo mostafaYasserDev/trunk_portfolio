@@ -53,7 +53,7 @@
     <script src="../js/admin.js"></script>
     <script type="module">
         import { auth, onAuthStateChanged, signOut, db, collection, deleteDoc, doc, onSnapshot, query, orderBy } from '../firebase/firebase.js';
-        import { escapeHtml } from '../js/security.js';
+        import { escapeHtml } from '../js/security.js?v=12';
         import { renderLongTextCell, bindViewTextButtons } from '../js/admin-ui.js';
 
         onAuthStateChanged(auth, (user) => {

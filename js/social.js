@@ -1,5 +1,5 @@
 import { registerSocialModalLinks } from './social-modal.js';
-import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizePlainText } from './security.js';
+import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizePlainText } from './security.js?v=12';
 
 export const SOCIAL_PRESETS = {
     linkedin: { label: 'لينكدإن', fa: 'fab fa-linkedin-in' },

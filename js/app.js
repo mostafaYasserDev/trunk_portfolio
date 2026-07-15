@@ -5,7 +5,7 @@ import {
 } from './helpers.js';
 import { bindSocialModals } from './social-modal.js';
 import { createSpamGuard, sanitizeText, isValidEmail } from './spam-guard.js';
-import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizeRichHtml } from './security.js';
+import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizeRichHtml } from './security.js?v=12';
 
 // Cache-first: serve from IndexedDB instantly, refresh from network silently in background
 async function fetchDocsLive(q, callback) {

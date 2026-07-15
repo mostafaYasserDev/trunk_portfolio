@@ -1,7 +1,7 @@
 /**
  * حماية بسيطة من السبام للنماذج العامة (بدون خادم خلفي).
  */
-import { sanitizePlainText, isValidEmail, validatePublicPayload } from './security.js';
+import { sanitizePlainText, isValidEmail, validatePublicPayload } from './security.js?v=12';
 
 export { sanitizePlainText as sanitizeText, isValidEmail };
 

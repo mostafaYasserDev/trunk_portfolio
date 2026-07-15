@@ -1,5 +1,5 @@
 import { SOCIAL_PRESETS } from '../js/social.js';
-import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizePlainText, escapeHtml } from '../js/security.js';
+import { sanitizeHttpUrl, sanitizeMediaUrl, sanitizePlainText, escapeHtml } from '../js/security.js?v=12';
 
 let extraLinks = [];
 

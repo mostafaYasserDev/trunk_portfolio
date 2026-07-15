@@ -1,7 +1,7 @@
 /**
  * واجهة مشتركة للوحة التحكم — نافذة عرض النصوص الطويلة.
  */
-import { escapeHtml } from './security.js';
+import { escapeHtml } from './security.js?v=12';
 
 let modalEl = null;
 const modalStore = new Map();
