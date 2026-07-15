@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jidhe-v15';
+const CACHE_NAME = 'jidhe-v16';
 const ASSETS = [
     './',
     './index.html',

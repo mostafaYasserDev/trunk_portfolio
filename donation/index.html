@@ -93,16 +93,8 @@
             display: block;
             width: 50px;
             height: 50px;
+            object-fit: contain;
             margin: 0 auto 15px;
-            background-color: var(--primary);
-            -webkit-mask-image: var(--donation-icon-image);
-            mask-image: var(--donation-icon-image);
-            -webkit-mask-size: contain;
-            mask-size: contain;
-            -webkit-mask-repeat: no-repeat;
-            mask-repeat: no-repeat;
-            -webkit-mask-position: center;
-            mask-position: center;
         }
         
         .donation-card h3 {
@@ -320,7 +312,7 @@
                                 activeDonationsCount++;
                                 const title = escapeHtml(data.title || 'وسيلة دعم');
                                 const iconHtml = safeIconImage
-                                    ? `<span class="donation-icon donation-icon-image" style="--donation-icon-image: url(&quot;${escapeHtml(safeIconImage)}&quot;);" role="img" aria-label="أيقونة ${title}"></span>`
+                                    ? `<img src="${escapeHtml(safeIconImage)}" class="donation-icon-image" alt="أيقونة ${title}" loading="eager" decoding="async">`
                                     : `<i class="${escapeHtml(safeIconClass)} donation-icon" aria-hidden="true"></i>`;
                                 html += `
                                     <a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="donation-card glass-panel">
